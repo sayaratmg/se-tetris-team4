@@ -2,28 +2,39 @@ package component;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.*;
 import java.awt.event.*;
 import java.util.Random;
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
 import javax.swing.text.*;
-
+import java.util.LinkedList;
+import java.util.Queue;
 import blocks.*;
 
 public class Board extends JFrame {
 
-    private static final long serialVersionUID = 2434035659171694595L;
+    private static final long serialVersionUID = 1L;
 
     public static final int HEIGHT = 20;
     public static final int WIDTH = 10;
     public static final char BORDER_CHAR = 'X';
 
     private JTextPane pane;
-    private Color[][] board;   // 고정된 블럭만 저장
+    private Color[][] board;
     private Timer timer;
+
     private Block curr;
     private int x = 3, y = 0;
     private int score = 0;
+
+    // 다음 블럭 큐
+    private Queue<Block> nextBlocks = new LinkedList<>();
+    private static final int NEXT_SIZE = 3;
+
+    // 난이도 관련
+    private int clearedLines = 0;
+    private int speedLevel = 1;
 
     private static final int initInterval = 1000;
 
@@ -31,7 +42,7 @@ public class Board extends JFrame {
         super("SeoulTech SE Tetris");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // 보드 출력용 패널
+        // 보드 출력 패널
         pane = new JTextPane();
         pane.setEditable(false);
         pane.setBackground(Color.BLACK);
@@ -46,7 +57,12 @@ public class Board extends JFrame {
 
         // 보드 초기화
         board = new Color[HEIGHT][WIDTH];
-        curr = getRandomBlock();
+
+        // ✅ 큐 초기화
+        for (int i = 0; i < NEXT_SIZE; i++) {
+            nextBlocks.add(getRandomBlock());
+        }
+        curr = nextBlocks.poll();
 
         // 키 입력 리스너
         pane.addKeyListener(new PlayerKeyListener());
@@ -83,7 +99,7 @@ public class Board extends JFrame {
                     int bx = newX + i;
                     int by = newY + j;
                     if (bx < 0 || bx >= WIDTH || by < 0 || by >= HEIGHT) return false;
-                    if (board[by][bx] != null) return false;  //색깔 있으면 충돌
+                    if (board[by][bx] != null) return false;
                 }
             }
         }
@@ -104,8 +120,12 @@ public class Board extends JFrame {
                 }
             }
             clearLines();
-            curr = getRandomBlock();
+
+            // ✅ 다음 블럭 큐에서 가져오기
+            curr = nextBlocks.poll();
+            nextBlocks.add(getRandomBlock());
             x = 3; y = 0;
+
             if (!canMove(curr, x, y)) {
                 gameOver();
             }
@@ -128,8 +148,21 @@ public class Board extends JFrame {
                 }
                 board[0] = new Color[WIDTH];
                 score += 100;
+                clearedLines++;
+
+                // ✅ 난이도 상승 체크
+                if (clearedLines % 10 == 0) {
+                    increaseSpeed();
+                }
             }
         }
+    }
+
+    private void increaseSpeed() {
+        int newDelay = Math.max(200, timer.getDelay() - 100);
+        timer.setDelay(newDelay);
+        speedLevel++;
+        System.out.println("난이도 상승! 레벨: " + speedLevel + ", 딜레이: " + newDelay + "ms");
     }
 
     private void gameOver() {
@@ -155,7 +188,6 @@ public class Board extends JFrame {
         moveDown();
     }
 
-    // 보드 출력 (색상 + 고정폭 적용)
     public void drawBoard() {
         StringBuilder sb = new StringBuilder();
 
@@ -166,8 +198,8 @@ public class Board extends JFrame {
         for (int i = 0; i < HEIGHT; i++) {
             sb.append(BORDER_CHAR);
             for (int j = 0; j < WIDTH; j++) {
-                if (board[i][j] !=null || isCurrBlockAt(j, i)) {
-                    sb.append("O"); // 블럭
+                if (board[i][j] != null || isCurrBlockAt(j, i)) {
+                    sb.append("O");
                 } else {
                     sb.append(" ");
                 }
@@ -176,23 +208,25 @@ public class Board extends JFrame {
             sb.append("\n");
         }
 
-        // 하단 테두리
         for (int t = 0; t < WIDTH + 2; t++) sb.append(BORDER_CHAR);
-
         sb.append("\nSCORE: ").append(score);
+        sb.append("\nLEVEL: ").append(speedLevel);
+
+        // ✅ 다음 블럭 표시
+        sb.append("\nNEXT: ").append(nextBlocks.peek().getClass().getSimpleName());
 
         // 출력 적용
         pane.setText(sb.toString());
         StyledDocument doc = pane.getStyledDocument();
 
-        // 고정폭 폰트 지정
+        // 기본 폰트 스타일
         SimpleAttributeSet baseStyle = new SimpleAttributeSet();
         StyleConstants.setFontFamily(baseStyle, "Courier New");
         StyleConstants.setFontSize(baseStyle, 18);
         StyleConstants.setForeground(baseStyle, Color.WHITE);
         doc.setParagraphAttributes(0, doc.getLength(), baseStyle, false);
 
-        // 블럭 색칠하기
+        // 블럭 색칠
         for (int i = 0; i < HEIGHT; i++) {
             for (int j = 0; j < WIDTH; j++) {
                 Color c = board[i][j];
@@ -202,8 +236,7 @@ public class Board extends JFrame {
                     StyleConstants.setFontFamily(blockStyle, "Courier New");
                     StyleConstants.setFontSize(blockStyle, 18);
                     StyleConstants.setForeground(blockStyle, c);
-
-                    int pos = (i + 1) * (WIDTH + 3) + (j + 1); // 위치 계산
+                    int pos = (i + 1) * (WIDTH + 3) + (j + 1);
                     doc.setCharacterAttributes(pos, 1, blockStyle, true);
                 }
             }
