@@ -19,7 +19,7 @@ public class Board extends JFrame {
     public static final char BORDER_CHAR = 'X';
 
     private JTextPane pane;
-    private int[][] board;   // 고정된 블럭만 저장
+    private Color[][] board;   // 고정된 블럭만 저장
     private Timer timer;
     private Block curr;
     private int x = 3, y = 0;
@@ -45,7 +45,7 @@ public class Board extends JFrame {
         timer = new Timer(initInterval, e -> moveDown());
 
         // 보드 초기화
-        board = new int[HEIGHT][WIDTH];
+        board = new Color[HEIGHT][WIDTH];
         curr = getRandomBlock();
 
         // 키 입력 리스너
@@ -83,7 +83,7 @@ public class Board extends JFrame {
                     int bx = newX + i;
                     int by = newY + j;
                     if (bx < 0 || bx >= WIDTH || by < 0 || by >= HEIGHT) return false;
-                    if (board[by][bx] == 1) return false;
+                    if (board[by][bx] != null) return false;  //색깔 있으면 충돌
                 }
             }
         }
@@ -99,7 +99,7 @@ public class Board extends JFrame {
             for (int j = 0; j < curr.height(); j++) {
                 for (int i = 0; i < curr.width(); i++) {
                     if (curr.getShape(i, j) == 1) {
-                        board[y + j][x + i] = 1;
+                        board[y + j][x + i] = curr.getColor();
                     }
                 }
             }
@@ -117,7 +117,7 @@ public class Board extends JFrame {
         for (int i = 0; i < HEIGHT; i++) {
             boolean full = true;
             for (int j = 0; j < WIDTH; j++) {
-                if (board[i][j] == 0) {
+                if (board[i][j] == null) {
                     full = false;
                     break;
                 }
@@ -126,7 +126,7 @@ public class Board extends JFrame {
                 for (int k = i; k > 0; k--) {
                     board[k] = board[k - 1].clone();
                 }
-                board[0] = new int[WIDTH];
+                board[0] = new Color[WIDTH];
                 score += 100;
             }
         }
@@ -166,7 +166,7 @@ public class Board extends JFrame {
         for (int i = 0; i < HEIGHT; i++) {
             sb.append(BORDER_CHAR);
             for (int j = 0; j < WIDTH; j++) {
-                if (board[i][j] == 1 || isCurrBlockAt(j, i)) {
+                if (board[i][j] !=null || isCurrBlockAt(j, i)) {
                     sb.append("O"); // 블럭
                 } else {
                     sb.append(" ");
@@ -192,14 +192,16 @@ public class Board extends JFrame {
         StyleConstants.setForeground(baseStyle, Color.WHITE);
         doc.setParagraphAttributes(0, doc.getLength(), baseStyle, false);
 
-        // 블럭 색칠하기 (예시: 현재/고정 블럭 모두 CYAN)
+        // 블럭 색칠하기
         for (int i = 0; i < HEIGHT; i++) {
             for (int j = 0; j < WIDTH; j++) {
-                if (board[i][j] == 1 || isCurrBlockAt(j, i)) {
+                Color c = board[i][j];
+                if (isCurrBlockAt(j, i)) c = curr.getColor();
+                if (c != null) {
                     SimpleAttributeSet blockStyle = new SimpleAttributeSet();
                     StyleConstants.setFontFamily(blockStyle, "Courier New");
                     StyleConstants.setFontSize(blockStyle, 18);
-                    StyleConstants.setForeground(blockStyle, Color.CYAN);
+                    StyleConstants.setForeground(blockStyle, c);
 
                     int pos = (i + 1) * (WIDTH + 3) + (j + 1); // 위치 계산
                     doc.setCharacterAttributes(pos, 1, blockStyle, true);
