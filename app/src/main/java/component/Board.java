@@ -1,15 +1,12 @@
 package component;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.Random;
+import java.util.*;
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
 import javax.swing.text.*;
-import java.util.LinkedList;
-import java.util.Queue;
+
 import blocks.*;
 
 public class Board extends JFrame {
@@ -22,7 +19,7 @@ public class Board extends JFrame {
 
     private JTextPane pane;
     private Color[][] board;
-    private Timer timer;
+    private javax.swing.Timer timer;
 
     private Block curr;
     private int x = 3, y = 0;
@@ -35,6 +32,9 @@ public class Board extends JFrame {
     // 난이도 관련
     private int clearedLines = 0;
     private int speedLevel = 1;
+
+    // 일시정지 상태
+    private boolean isPaused = false;
 
     private static final int initInterval = 1000;
 
@@ -53,20 +53,21 @@ public class Board extends JFrame {
         this.getContentPane().add(pane, BorderLayout.CENTER);
 
         // 게임 루프 타이머
-        timer = new Timer(initInterval, e -> moveDown());
+        timer = new javax.swing.Timer(initInterval, e -> {
+            if (!isPaused) moveDown();
+        });
 
         // 보드 초기화
         board = new Color[HEIGHT][WIDTH];
 
-        // ✅ 큐 초기화
+        // 큐 초기화
         for (int i = 0; i < NEXT_SIZE; i++) {
             nextBlocks.add(getRandomBlock());
         }
         curr = nextBlocks.poll();
 
-        // 키 입력 리스너
-        pane.addKeyListener(new PlayerKeyListener());
-        pane.setFocusable(true);
+        // 키 바인딩 등록
+        setupKeyBindings();
 
         drawBoard();
         timer.start();
@@ -121,7 +122,7 @@ public class Board extends JFrame {
             }
             clearLines();
 
-            // ✅ 다음 블럭 큐에서 가져오기
+            // 다음 블럭 큐에서 가져오기
             curr = nextBlocks.poll();
             nextBlocks.add(getRandomBlock());
             x = 3; y = 0;
@@ -150,7 +151,7 @@ public class Board extends JFrame {
                 score += 100;
                 clearedLines++;
 
-                // ✅ 난이도 상승 체크
+                // 난이도 상승 체크
                 if (clearedLines % 10 == 0) {
                     increaseSpeed();
                 }
@@ -188,6 +189,55 @@ public class Board extends JFrame {
         moveDown();
     }
 
+    // 일시정지 토글
+    private void togglePause() {
+        isPaused = !isPaused;
+        System.out.println(isPaused ? "게임 일시정지" : "게임 재개");
+    }
+
+    // 게임 종료 처리
+    private void exitGame() {
+        timer.stop();
+        System.out.println("게임 종료. 최종 점수: " + score);
+        System.exit(0);
+    }
+
+    // 키 바인딩 설정 (즉시 반응 & 반복 입력 지원)
+    private void setupKeyBindings() {
+        InputMap im = pane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = pane.getActionMap();
+
+        im.put(KeyStroke.getKeyStroke("RIGHT"), "moveRight");
+        im.put(KeyStroke.getKeyStroke("LEFT"), "moveLeft");
+        im.put(KeyStroke.getKeyStroke("DOWN"), "moveDown");
+        im.put(KeyStroke.getKeyStroke("UP"), "rotate");
+        im.put(KeyStroke.getKeyStroke("SPACE"), "hardDrop");
+        im.put(KeyStroke.getKeyStroke("P"), "pause");
+        im.put(KeyStroke.getKeyStroke("ESCAPE"), "exit");
+
+        am.put("moveRight", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { moveRight(); drawBoard(); }
+        });
+        am.put("moveLeft", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { moveLeft(); drawBoard(); }
+        });
+        am.put("moveDown", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { moveDown(); drawBoard(); }
+        });
+        am.put("rotate", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { curr.rotate(); drawBoard(); }
+        });
+        am.put("hardDrop", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { hardDrop(); drawBoard(); }
+        });
+        am.put("pause", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { togglePause(); }
+        });
+        am.put("exit", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { exitGame(); }
+        });
+    }
+
     public void drawBoard() {
         StringBuilder sb = new StringBuilder();
 
@@ -211,11 +261,9 @@ public class Board extends JFrame {
         for (int t = 0; t < WIDTH + 2; t++) sb.append(BORDER_CHAR);
         sb.append("\nSCORE: ").append(score);
         sb.append("\nLEVEL: ").append(speedLevel);
-
-        // ✅ 다음 블럭 표시
         sb.append("\nNEXT: ").append(nextBlocks.peek().getClass().getSimpleName());
+        sb.append("\n").append(isPaused ? "[일시정지]" : "");
 
-        // 출력 적용
         pane.setText(sb.toString());
         StyledDocument doc = pane.getStyledDocument();
 
@@ -254,21 +302,5 @@ public class Board extends JFrame {
             }
         }
         return false;
-    }
-
-    public class PlayerKeyListener implements KeyListener {
-        @Override public void keyTyped(KeyEvent e) {}
-        @Override
-        public void keyPressed(KeyEvent e) {
-            switch (e.getKeyCode()) {
-                case KeyEvent.VK_DOWN: moveDown(); break;
-                case KeyEvent.VK_RIGHT: moveRight(); break;
-                case KeyEvent.VK_LEFT: moveLeft(); break;
-                case KeyEvent.VK_UP: curr.rotate(); break;
-                case KeyEvent.VK_SPACE: hardDrop(); break;
-            }
-            drawBoard();
-        }
-        @Override public void keyReleased(KeyEvent e) {}
     }
 }
