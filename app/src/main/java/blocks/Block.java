@@ -2,7 +2,7 @@ package blocks;
 
 import java.awt.Color;
 
-public abstract class Block {
+public abstract class Block implements Cloneable {
 		
 	protected int[][] shape;
 	protected Color color;
