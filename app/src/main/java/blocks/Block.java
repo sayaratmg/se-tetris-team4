@@ -46,4 +46,20 @@ public abstract class Block {
 			return shape[0].length;
 		return 0;
 	}
+
+	 // clone
+    @Override
+    public Block clone() {
+        try {
+            Block copy = (Block) super.clone();
+            // shape 배열 deep copy
+            copy.shape = new int[this.shape.length][];
+            for (int i = 0; i < this.shape.length; i++) {
+                copy.shape[i] = this.shape[i].clone();
+            }
+            return copy;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+    }
 }
