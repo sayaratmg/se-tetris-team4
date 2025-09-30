@@ -3,6 +3,7 @@ package component;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
+import java.util.Queue;
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
 import javax.swing.text.*;
@@ -107,6 +108,23 @@ public class Board extends JFrame {
         return true;
     }
 
+    // Board 클래스 내부
+    protected void rotateBlock() {
+        Block backup = curr; // 기존 블럭 백업
+        int oldX = x, oldY = y;
+
+        curr.rotate(); // 시도
+
+        // 회전 후 움직일 수 없는 경우 → 롤백
+        if (!canMove(curr, x, y)) {
+            curr = backup; // 블럭 원래대로
+            x = oldX; 
+            y = oldY;
+        }
+        drawBoard();
+    }
+
+
     protected void moveDown() {
         if (canMove(curr, x, y + 1)) {
             y++;
@@ -204,8 +222,11 @@ public class Board extends JFrame {
 
     // 키 바인딩 설정 (즉시 반응 & 반복 입력 지원)
     private void setupKeyBindings() {
-        InputMap im = pane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        InputMap im = pane.getInputMap(JComponent.WHEN_FOCUSED);
         ActionMap am = pane.getActionMap();
+
+        pane.setFocusTraversalKeysEnabled(false);
+
 
         im.put(KeyStroke.getKeyStroke("RIGHT"), "moveRight");
         im.put(KeyStroke.getKeyStroke("LEFT"), "moveLeft");
@@ -225,7 +246,9 @@ public class Board extends JFrame {
             public void actionPerformed(ActionEvent e) { moveDown(); drawBoard(); }
         });
         am.put("rotate", new AbstractAction() {
-            public void actionPerformed(ActionEvent e) { curr.rotate(); drawBoard(); }
+            public void actionPerformed(ActionEvent e) {
+                rotateBlock();
+            }
         });
         am.put("hardDrop", new AbstractAction() {
             public void actionPerformed(ActionEvent e) { hardDrop(); drawBoard(); }
