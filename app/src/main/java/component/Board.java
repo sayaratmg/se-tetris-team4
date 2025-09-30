@@ -11,6 +11,11 @@ import java.util.Random;
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JTextPane;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import java.awt.Component;
 import javax.swing.Timer;
 import javax.swing.border.CompoundBorder;
 import javax.swing.text.SimpleAttributeSet;
@@ -26,7 +31,6 @@ import blocks.SBlock;
 import blocks.TBlock;
 import blocks.ZBlock;
 
-
 public class Board extends JFrame {
 
 	private static final long serialVersionUID = 2434035659171694595L;
@@ -36,6 +40,11 @@ public class Board extends JFrame {
 	public static final char BORDER_CHAR = 'X';
 	
 	private JTextPane pane;
+	private JLabel scoreLabel;
+	private JLabel statusLabel;
+	private JPanel rootPanel;           
+	private int score = 0; // UI tracking only
+
 	private int[][] board;
 	private KeyListener playerKeyListener;
 	private SimpleAttributeSet styleSet;
@@ -48,19 +57,40 @@ public class Board extends JFrame {
 	
 	public Board() {
 		super("SeoulTech SE Tetris");
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		
 		//Board display setting.
 		pane = new JTextPane();
 		pane.setEditable(false);
+		pane.setFocusable(false); 
 		pane.setBackground(Color.BLACK);
 		CompoundBorder border = BorderFactory.createCompoundBorder(
 				BorderFactory.createLineBorder(Color.GRAY, 10),
 				BorderFactory.createLineBorder(Color.DARK_GRAY, 5));
 		pane.setBorder(border);
-		this.getContentPane().add(pane, BorderLayout.CENTER);
-		
-		//Document default style.
+
+		rootPanel = new JPanel(new BorderLayout());
+		rootPanel.add(pane, BorderLayout.CENTER);
+
+	
+		JPanel side = new JPanel();
+		side.setLayout(new BoxLayout(side, BoxLayout.Y_AXIS));
+		side.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+		scoreLabel = new JLabel("Score: 0");
+		statusLabel = new JLabel("Ready");
+
+		scoreLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		side.add(scoreLabel);
+		side.add(Box.createVerticalStrut(8));
+		side.add(statusLabel);
+
+		rootPanel.add(side, BorderLayout.EAST);
+		setContentPane(rootPanel);
+
+	
 		styleSet = new SimpleAttributeSet();
 		StyleConstants.setFontSize(styleSet, 18);
 		StyleConstants.setFontFamily(styleSet, "Courier");
@@ -68,7 +98,7 @@ public class Board extends JFrame {
 		StyleConstants.setForeground(styleSet, Color.WHITE);
 		StyleConstants.setAlignment(styleSet, StyleConstants.ALIGN_CENTER);
 		
-		//Set timer for block drops.
+
 		timer = new Timer(initInterval, new ActionListener() {			
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -77,23 +107,28 @@ public class Board extends JFrame {
 			}
 		});
 		
-		//Initialize board for the game.
 		board = new int[HEIGHT][WIDTH];
 		playerKeyListener = new PlayerKeyListener();
-		addKeyListener(playerKeyListener);
-		setFocusable(true);
-		requestFocus();
+
+	
+		rootPanel.addKeyListener(playerKeyListener);
+		rootPanel.setFocusable(true);
+		rootPanel.requestFocusInWindow();
+
 		
-		//Create the first block and draw.
 		curr = getRandomBlock();
 		placeBlock();
 		drawBoard();
 		timer.start();
 	}
 
+	public JPanel getEmbeddedPanel() {
+		return rootPanel;
+	}
+
 	private Block getRandomBlock() {
 		Random rnd = new Random(System.currentTimeMillis());
-		int block = rnd.nextInt(6);
+		int block = rnd.nextInt(7); 
 		switch(block) {
 		case 0:
 			return new IBlock();
@@ -190,9 +225,7 @@ public class Board extends JFrame {
 
 	public class PlayerKeyListener implements KeyListener {
 		@Override
-		public void keyTyped(KeyEvent e) {
-				
-		}
+		public void keyTyped(KeyEvent e) { }
 
 		@Override
 		public void keyPressed(KeyEvent e) {
@@ -216,11 +249,16 @@ public class Board extends JFrame {
 				break;
 			}
 		}
-
 		@Override
-		public void keyReleased(KeyEvent e) {
-			
-		}
+		public void keyReleased(KeyEvent e) { }
 	}
-	
+
+	public void setScore(int newScore) {
+		this.score = newScore;
+		if (scoreLabel != null) scoreLabel.setText("Score: " + newScore);
+	}
+
+	public void setStatus(String text) {
+		if (statusLabel != null) statusLabel.setText(text);
+	}
 }
