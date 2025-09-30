@@ -1,9 +1,9 @@
 package component;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
+import java.awt.*;
 import java.awt.event.*;
-import java.util.Random;
+import java.util.*;
+import java.util.Queue;
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
 import javax.swing.text.*;
@@ -12,18 +12,30 @@ import blocks.*;
 
 public class Board extends JFrame {
 
-    private static final long serialVersionUID = 2434035659171694595L;
+    private static final long serialVersionUID = 1L;
 
     public static final int HEIGHT = 20;
     public static final int WIDTH = 10;
     public static final char BORDER_CHAR = 'X';
 
     private JTextPane pane;
-    private int[][] board;   // 고정된 블럭만 저장
-    private Timer timer;
+    private Color[][] board;
+    private javax.swing.Timer timer;
+
     private Block curr;
     private int x = 3, y = 0;
     private int score = 0;
+
+    // 다음 블럭 큐
+    private Queue<Block> nextBlocks = new LinkedList<>();
+    private static final int NEXT_SIZE = 3;
+
+    // 난이도 관련
+    private int clearedLines = 0;
+    private int speedLevel = 1;
+
+    // 일시정지 상태
+    private boolean isPaused = false;
 
     private static final int initInterval = 1000;
 
@@ -31,7 +43,7 @@ public class Board extends JFrame {
         super("SeoulTech SE Tetris");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // 보드 출력용 패널
+        // 보드 출력 패널
         pane = new JTextPane();
         pane.setEditable(false);
         pane.setBackground(Color.BLACK);
@@ -42,15 +54,22 @@ public class Board extends JFrame {
         this.getContentPane().add(pane, BorderLayout.CENTER);
 
         // 게임 루프 타이머
-        timer = new Timer(initInterval, e -> moveDown());
+        timer = new javax.swing.Timer(initInterval, e -> {
+            if (!isPaused)
+                moveDown();
+        });
 
         // 보드 초기화
-        board = new int[HEIGHT][WIDTH];
-        curr = getRandomBlock();
+        board = new Color[HEIGHT][WIDTH];
 
-        // 키 입력 리스너
-        pane.addKeyListener(new PlayerKeyListener());
-        pane.setFocusable(true);
+        // 큐 초기화
+        for (int i = 0; i < NEXT_SIZE; i++) {
+            nextBlocks.add(getRandomBlock());
+        }
+        curr = nextBlocks.poll();
+
+        // 키 바인딩 등록
+        setupKeyBindings();
 
         drawBoard();
         timer.start();
@@ -65,13 +84,20 @@ public class Board extends JFrame {
         Random rnd = new Random(System.currentTimeMillis());
         int block = rnd.nextInt(7);
         switch (block) {
-            case 0: return new IBlock();
-            case 1: return new JBlock();
-            case 2: return new LBlock();
-            case 3: return new ZBlock();
-            case 4: return new SBlock();
-            case 5: return new TBlock();
-            case 6: return new OBlock();
+            case 0:
+                return new IBlock();
+            case 1:
+                return new JBlock();
+            case 2:
+                return new LBlock();
+            case 3:
+                return new ZBlock();
+            case 4:
+                return new SBlock();
+            case 5:
+                return new TBlock();
+            case 6:
+                return new OBlock();
         }
         return new LBlock();
     }
@@ -82,12 +108,45 @@ public class Board extends JFrame {
                 if (block.getShape(i, j) == 1) {
                     int bx = newX + i;
                     int by = newY + j;
-                    if (bx < 0 || bx >= WIDTH || by < 0 || by >= HEIGHT) return false;
-                    if (board[by][bx] == 1) return false;
+                    if (bx < 0 || bx >= WIDTH || by < 0 || by >= HEIGHT)
+                        return false;
+                    if (board[by][bx] != null)
+                        return false;
                 }
             }
         }
         return true;
+    }
+
+
+
+    protected void rotateBlock() {
+        
+        Block backup = curr.clone();
+        int oldX = x, oldY = y;
+
+        // 회전 시도
+        curr.rotate();
+
+        // 현재 위치에서 불가능하면 벽킥 시도
+        if (!canMove(curr, x, y)) {
+            // 왼쪽 한 칸 이동
+            if (canMove(curr, x - 1, y)) {
+                x -= 1;
+            }
+            // 오른쪽 한 칸 이동
+            else if (canMove(curr, x + 1, y)) {
+                x += 1;
+            }
+            // 그래도 안 되면 롤백
+            else {
+                curr = backup;
+                x = oldX;
+                y = oldY;
+            }
+        }
+
+        drawBoard();
     }
 
     protected void moveDown() {
@@ -99,13 +158,18 @@ public class Board extends JFrame {
             for (int j = 0; j < curr.height(); j++) {
                 for (int i = 0; i < curr.width(); i++) {
                     if (curr.getShape(i, j) == 1) {
-                        board[y + j][x + i] = 1;
+                        board[y + j][x + i] = curr.getColor();
                     }
                 }
             }
             clearLines();
-            curr = getRandomBlock();
-            x = 3; y = 0;
+
+            // 다음 블럭 큐에서 가져오기
+            curr = nextBlocks.poll();
+            nextBlocks.add(getRandomBlock());
+            x = 3;
+            y = 0;
+
             if (!canMove(curr, x, y)) {
                 gameOver();
             }
@@ -117,7 +181,7 @@ public class Board extends JFrame {
         for (int i = 0; i < HEIGHT; i++) {
             boolean full = true;
             for (int j = 0; j < WIDTH; j++) {
-                if (board[i][j] == 0) {
+                if (board[i][j] == null) {
                     full = false;
                     break;
                 }
@@ -126,10 +190,23 @@ public class Board extends JFrame {
                 for (int k = i; k > 0; k--) {
                     board[k] = board[k - 1].clone();
                 }
-                board[0] = new int[WIDTH];
+                board[0] = new Color[WIDTH];
                 score += 100;
+                clearedLines++;
+
+                // 난이도 상승 체크
+                if (clearedLines % 10 == 0) {
+                    increaseSpeed();
+                }
             }
         }
+    }
+
+    private void increaseSpeed() {
+        int newDelay = Math.max(200, timer.getDelay() - 100);
+        timer.setDelay(newDelay);
+        speedLevel++;
+        System.out.println("난이도 상승! 레벨: " + speedLevel + ", 딜레이: " + newDelay + "ms");
     }
 
     private void gameOver() {
@@ -138,12 +215,14 @@ public class Board extends JFrame {
     }
 
     protected void moveRight() {
-        if (canMove(curr, x + 1, y)) x++;
+        if (canMove(curr, x + 1, y))
+            x++;
         drawBoard();
     }
 
     protected void moveLeft() {
-        if (canMove(curr, x - 1, y)) x--;
+        if (canMove(curr, x - 1, y))
+            x--;
         drawBoard();
     }
 
@@ -155,19 +234,88 @@ public class Board extends JFrame {
         moveDown();
     }
 
-    // 보드 출력 (색상 + 고정폭 적용)
+    // 일시정지 토글
+    private void togglePause() {
+        isPaused = !isPaused;
+        System.out.println(isPaused ? "게임 일시정지" : "게임 재개");
+    }
+
+    // 게임 종료 처리
+    private void exitGame() {
+        timer.stop();
+        System.out.println("게임 종료. 최종 점수: " + score);
+        System.exit(0);
+    }
+
+    // 키 바인딩 설정 (즉시 반응 & 반복 입력 지원)
+    private void setupKeyBindings() {
+        InputMap im = pane.getInputMap(JComponent.WHEN_FOCUSED);
+        ActionMap am = pane.getActionMap();
+
+        pane.setFocusTraversalKeysEnabled(false);
+
+        im.put(KeyStroke.getKeyStroke("RIGHT"), "moveRight");
+        im.put(KeyStroke.getKeyStroke("LEFT"), "moveLeft");
+        im.put(KeyStroke.getKeyStroke("DOWN"), "moveDown");
+        im.put(KeyStroke.getKeyStroke("UP"), "rotate");
+        im.put(KeyStroke.getKeyStroke("SPACE"), "hardDrop");
+        im.put(KeyStroke.getKeyStroke("P"), "pause");
+        im.put(KeyStroke.getKeyStroke("ESCAPE"), "exit");
+
+        am.put("moveRight", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                moveRight();
+                drawBoard();
+            }
+        });
+        am.put("moveLeft", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                moveLeft();
+                drawBoard();
+            }
+        });
+        am.put("moveDown", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                moveDown();
+                drawBoard();
+            }
+        });
+        am.put("rotate", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                rotateBlock();
+            }
+        });
+        am.put("hardDrop", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                hardDrop();
+                drawBoard();
+            }
+        });
+        am.put("pause", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                togglePause();
+            }
+        });
+        am.put("exit", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                exitGame();
+            }
+        });
+    }
+
     public void drawBoard() {
         StringBuilder sb = new StringBuilder();
 
         // 상단 테두리
-        for (int t = 0; t < WIDTH + 2; t++) sb.append(BORDER_CHAR);
+        for (int t = 0; t < WIDTH + 2; t++)
+            sb.append(BORDER_CHAR);
         sb.append("\n");
 
         for (int i = 0; i < HEIGHT; i++) {
             sb.append(BORDER_CHAR);
             for (int j = 0; j < WIDTH; j++) {
-                if (board[i][j] == 1 || isCurrBlockAt(j, i)) {
-                    sb.append("O"); // 블럭
+                if (board[i][j] != null || isCurrBlockAt(j, i)) {
+                    sb.append("O");
                 } else {
                     sb.append(" ");
                 }
@@ -176,32 +324,35 @@ public class Board extends JFrame {
             sb.append("\n");
         }
 
-        // 하단 테두리
-        for (int t = 0; t < WIDTH + 2; t++) sb.append(BORDER_CHAR);
-
+        for (int t = 0; t < WIDTH + 2; t++)
+            sb.append(BORDER_CHAR);
         sb.append("\nSCORE: ").append(score);
+        sb.append("\nLEVEL: ").append(speedLevel);
+        sb.append("\nNEXT: ").append(nextBlocks.peek().getClass().getSimpleName());
+        sb.append("\n").append(isPaused ? "[일시정지]" : "");
 
-        // 출력 적용
         pane.setText(sb.toString());
         StyledDocument doc = pane.getStyledDocument();
 
-        // 고정폭 폰트 지정
+        // 기본 폰트 스타일
         SimpleAttributeSet baseStyle = new SimpleAttributeSet();
         StyleConstants.setFontFamily(baseStyle, "Courier New");
         StyleConstants.setFontSize(baseStyle, 18);
         StyleConstants.setForeground(baseStyle, Color.WHITE);
         doc.setParagraphAttributes(0, doc.getLength(), baseStyle, false);
 
-        // 블럭 색칠하기 (예시: 현재/고정 블럭 모두 CYAN)
+        // 블럭 색칠
         for (int i = 0; i < HEIGHT; i++) {
             for (int j = 0; j < WIDTH; j++) {
-                if (board[i][j] == 1 || isCurrBlockAt(j, i)) {
+                Color c = board[i][j];
+                if (isCurrBlockAt(j, i))
+                    c = curr.getColor();
+                if (c != null) {
                     SimpleAttributeSet blockStyle = new SimpleAttributeSet();
                     StyleConstants.setFontFamily(blockStyle, "Courier New");
                     StyleConstants.setFontSize(blockStyle, 18);
-                    StyleConstants.setForeground(blockStyle, Color.CYAN);
-
-                    int pos = (i + 1) * (WIDTH + 3) + (j + 1); // 위치 계산
+                    StyleConstants.setForeground(blockStyle, c);
+                    int pos = (i + 1) * (WIDTH + 3) + (j + 1);
                     doc.setCharacterAttributes(pos, 1, blockStyle, true);
                 }
             }
@@ -219,21 +370,5 @@ public class Board extends JFrame {
             }
         }
         return false;
-    }
-
-    public class PlayerKeyListener implements KeyListener {
-        @Override public void keyTyped(KeyEvent e) {}
-        @Override
-        public void keyPressed(KeyEvent e) {
-            switch (e.getKeyCode()) {
-                case KeyEvent.VK_DOWN: moveDown(); break;
-                case KeyEvent.VK_RIGHT: moveRight(); break;
-                case KeyEvent.VK_LEFT: moveLeft(); break;
-                case KeyEvent.VK_UP: curr.rotate(); break;
-                case KeyEvent.VK_SPACE: hardDrop(); break;
-            }
-            drawBoard();
-        }
-        @Override public void keyReleased(KeyEvent e) {}
     }
 }
