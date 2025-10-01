@@ -1,262 +1,14 @@
 package component;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.util.Random;
-
-import javax.swing.BorderFactory;
-import javax.swing.JFrame;
-import javax.swing.JTextPane;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import java.awt.Component;
-import javax.swing.Timer;
-
 import java.awt.*;
 import java.awt.event.*;
-import java.util.*;
+import java.util.LinkedList;
 import java.util.Queue;
-import javax.swing.*;
+import java.util.Random;
 
+import javax.swing.*;
 import javax.swing.border.CompoundBorder;
 import javax.swing.text.*;
-
-public class Board extends JFrame {
-
-	private static final long serialVersionUID = 2434035659171694595L;
-	
-	public static final int HEIGHT = 20;
-	public static final int WIDTH = 10;
-	public static final char BORDER_CHAR = 'X';
-	
-	private JTextPane pane;
-	private JLabel scoreLabel;
-	private JLabel statusLabel;
-	private JPanel rootPanel;           
-	private int score = 0; // UI tracking only
-
-	private int[][] board;
-	private KeyListener playerKeyListener;
-	private SimpleAttributeSet styleSet;
-	private Timer timer;
-	private Block curr;
-	int x = 3; //Default Position.
-	int y = 0;
-	
-	private static final int initInterval = 1000;
-	
-	public Board() {
-		super("SeoulTech SE Tetris");
-		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		
-		//Board display setting.
-		pane = new JTextPane();
-		pane.setEditable(false);
-		pane.setFocusable(false); 
-		pane.setBackground(Color.BLACK);
-		CompoundBorder border = BorderFactory.createCompoundBorder(
-				BorderFactory.createLineBorder(Color.GRAY, 10),
-				BorderFactory.createLineBorder(Color.DARK_GRAY, 5));
-		pane.setBorder(border);
-
-		rootPanel = new JPanel(new BorderLayout());
-		rootPanel.add(pane, BorderLayout.CENTER);
-
-	
-		JPanel side = new JPanel();
-		side.setLayout(new BoxLayout(side, BoxLayout.Y_AXIS));
-		side.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-		scoreLabel = new JLabel("Score: 0");
-		statusLabel = new JLabel("Ready");
-
-		scoreLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-		side.add(scoreLabel);
-		side.add(Box.createVerticalStrut(8));
-		side.add(statusLabel);
-
-		rootPanel.add(side, BorderLayout.EAST);
-		setContentPane(rootPanel);
-
-	
-		styleSet = new SimpleAttributeSet();
-		StyleConstants.setFontSize(styleSet, 18);
-		StyleConstants.setFontFamily(styleSet, "Courier");
-		StyleConstants.setBold(styleSet, true);
-		StyleConstants.setForeground(styleSet, Color.WHITE);
-		StyleConstants.setAlignment(styleSet, StyleConstants.ALIGN_CENTER);
-		
-
-		timer = new Timer(initInterval, new ActionListener() {			
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				moveDown();
-				drawBoard();
-			}
-		});
-		
-		board = new int[HEIGHT][WIDTH];
-		playerKeyListener = new PlayerKeyListener();
-
-	
-		rootPanel.addKeyListener(playerKeyListener);
-		rootPanel.setFocusable(true);
-		rootPanel.requestFocusInWindow();
-
-		
-		curr = getRandomBlock();
-		placeBlock();
-		drawBoard();
-		timer.start();
-	}
-
-	public JPanel getEmbeddedPanel() {
-		return rootPanel;
-	}
-
-	private Block getRandomBlock() {
-		Random rnd = new Random(System.currentTimeMillis());
-		int block = rnd.nextInt(7); 
-		switch(block) {
-		case 0:
-			return new IBlock();
-		case 1:
-			return new JBlock();
-		case 2:
-			return new LBlock();
-		case 3:
-			return new ZBlock();
-		case 4:
-			return new SBlock();
-		case 5:
-			return new TBlock();
-		case 6:
-			return new OBlock();			
-		}
-		return new LBlock();
-	}
-	
-	private void placeBlock() {
-		StyledDocument doc = pane.getStyledDocument();
-		SimpleAttributeSet styles = new SimpleAttributeSet();
-		StyleConstants.setForeground(styles, curr.getColor());
-		for(int j=0; j<curr.height(); j++) {
-			int rows = y+j == 0 ? 0 : y+j-1;
-			int offset = rows * (WIDTH+3) + x + 1;
-			doc.setCharacterAttributes(offset, curr.width(), styles, true);
-			for(int i=0; i<curr.width(); i++) {
-				board[y+j][x+i] = curr.getShape(i, j);
-			}
-		}
-	}
-	
-	private void eraseCurr() {
-		for(int i=x; i<x+curr.width(); i++) {
-			for(int j=y; j<y+curr.height(); j++) {
-				board[j][i] = 0;
-			}
-		}
-	}
-
-	protected void moveDown() {
-		eraseCurr();
-		if(y < HEIGHT - curr.height()) y++;
-		else {
-			placeBlock();
-			curr = getRandomBlock();
-			x = 3;
-			y = 0;
-		}
-		placeBlock();
-	}
-	
-	protected void moveRight() {
-		eraseCurr();
-		if(x < WIDTH - curr.width()) x++;
-		placeBlock();
-	}
-
-	protected void moveLeft() {
-		eraseCurr();
-		if(x > 0) {
-			x--;
-		}
-		placeBlock();
-	}
-
-	public void drawBoard() {
-		StringBuffer sb = new StringBuffer();
-		for(int t=0; t<WIDTH+2; t++) sb.append(BORDER_CHAR);
-		sb.append("\n");
-		for(int i=0; i < board.length; i++) {
-			sb.append(BORDER_CHAR);
-			for(int j=0; j < board[i].length; j++) {
-				if(board[i][j] == 1) {
-					sb.append("O");
-				} else {
-					sb.append(" ");
-				}
-			}
-			sb.append(BORDER_CHAR);
-			sb.append("\n");
-		}
-		for(int t=0; t<WIDTH+2; t++) sb.append(BORDER_CHAR);
-		pane.setText(sb.toString());
-		StyledDocument doc = pane.getStyledDocument();
-		doc.setParagraphAttributes(0, doc.getLength(), styleSet, false);
-		pane.setStyledDocument(doc);
-	}
-	
-	public void reset() {
-		this.board = new int[20][10];
-	}
-
-	public class PlayerKeyListener implements KeyListener {
-		@Override
-		public void keyTyped(KeyEvent e) { }
-
-		@Override
-		public void keyPressed(KeyEvent e) {
-			switch(e.getKeyCode()) {
-			case KeyEvent.VK_DOWN:
-				moveDown();
-				drawBoard();
-				break;
-			case KeyEvent.VK_RIGHT:
-				moveRight();
-				drawBoard();
-				break;
-			case KeyEvent.VK_LEFT:
-				moveLeft();
-				drawBoard();
-				break;
-			case KeyEvent.VK_UP:
-				eraseCurr();
-				curr.rotate();
-				drawBoard();
-				break;
-			}
-		}
-		@Override
-		public void keyReleased(KeyEvent e) { }
-	}
-
-	public void setScore(int newScore) {
-		this.score = newScore;
-		if (scoreLabel != null) scoreLabel.setText("Score: " + newScore);
-	}
-
-	public void setStatus(String text) {
-		if (statusLabel != null) statusLabel.setText(text);
-	}
 
 import blocks.*;
 
@@ -269,71 +21,90 @@ public class Board extends JFrame {
     public static final char BORDER_CHAR = 'X';
 
     private JTextPane pane;
-    private Color[][] board;
-    private javax.swing.Timer timer;
+    private JLabel scoreLabel;
+    private JLabel statusLabel;
+    private JPanel rootPanel;
 
+    private Color[][] board;
     private Block curr;
     private int x = 3, y = 0;
+
+    // 점수/난이도
     private int score = 0;
+    private int clearedLines = 0;
+    private int speedLevel = 1;
 
     // 다음 블럭 큐
     private Queue<Block> nextBlocks = new LinkedList<>();
     private static final int NEXT_SIZE = 3;
 
-    // 난이도 관련
-    private int clearedLines = 0;
-    private int speedLevel = 1;
-
-    // 일시정지 상태
+    private javax.swing.Timer timer;
     private boolean isPaused = false;
-
     private static final int initInterval = 1000;
 
     public Board() {
         super("SeoulTech SE Tetris");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        // 보드 출력 패널
+        // ===== 메인 보드 패널 =====
         pane = new JTextPane();
         pane.setEditable(false);
+        pane.setFocusable(false);
         pane.setBackground(Color.BLACK);
+        pane.setFont(new Font("Courier New", Font.PLAIN, 18)); // 고정폭 폰트 강제
         CompoundBorder border = BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(Color.GRAY, 10),
                 BorderFactory.createLineBorder(Color.DARK_GRAY, 5));
         pane.setBorder(border);
-        this.getContentPane().add(pane, BorderLayout.CENTER);
 
-        // 게임 루프 타이머
-        timer = new javax.swing.Timer(initInterval, e -> {
-            if (!isPaused)
-                moveDown();
-        });
+        rootPanel = new JPanel(new BorderLayout());
+        rootPanel.add(pane, BorderLayout.CENTER);
 
-        // 보드 초기화
+        // ===== 사이드 패널 =====
+        JPanel side = new JPanel();
+        side.setLayout(new BoxLayout(side, BoxLayout.Y_AXIS));
+        side.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        scoreLabel = new JLabel("Score: 0");
+        statusLabel = new JLabel("Ready");
+        scoreLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        side.add(scoreLabel);
+        side.add(Box.createVerticalStrut(8));
+        side.add(statusLabel);
+
+        rootPanel.add(side, BorderLayout.EAST);
+        setContentPane(rootPanel);
+
+        // ===== 보드/블럭 초기화 =====
         board = new Color[HEIGHT][WIDTH];
-
-        // 큐 초기화
         for (int i = 0; i < NEXT_SIZE; i++) {
             nextBlocks.add(getRandomBlock());
         }
         curr = nextBlocks.poll();
 
-        // 키 바인딩 등록
+        // ===== 게임 루프 타이머 =====
+        timer = new javax.swing.Timer(initInterval, e -> {
+            if (!isPaused) {
+                moveDown();
+                drawBoard();
+            }
+        });
+
         setupKeyBindings();
 
         drawBoard();
         timer.start();
 
-        // 창 크기 & 표시
-        setSize(300, 600);
+        setSize(500, 700);
         setVisible(true);
-        pane.requestFocusInWindow();
+        rootPanel.requestFocusInWindow();
     }
 
     private Block getRandomBlock() {
         Random rnd = new Random(System.currentTimeMillis());
-        int block = rnd.nextInt(7);
-        switch (block) {
+        switch (rnd.nextInt(7)) {
             case 0:
                 return new IBlock();
             case 1:
@@ -356,8 +127,7 @@ public class Board extends JFrame {
         for (int j = 0; j < block.height(); j++) {
             for (int i = 0; i < block.width(); i++) {
                 if (block.getShape(i, j) == 1) {
-                    int bx = newX + i;
-                    int by = newY + j;
+                    int bx = newX + i, by = newY + j;
                     if (bx < 0 || bx >= WIDTH || by < 0 || by >= HEIGHT)
                         return false;
                     if (board[by][bx] != null)
@@ -368,37 +138,27 @@ public class Board extends JFrame {
         return true;
     }
 
-
-
+    // ===== 블럭 회전 (벽킥 간단 적용) =====
     protected void rotateBlock() {
-        
         Block backup = curr.clone();
         int oldX = x, oldY = y;
 
-        // 회전 시도
         curr.rotate();
-
-        // 현재 위치에서 불가능하면 벽킥 시도
         if (!canMove(curr, x, y)) {
-            // 왼쪽 한 칸 이동
             if (canMove(curr, x - 1, y)) {
                 x -= 1;
-            }
-            // 오른쪽 한 칸 이동
-            else if (canMove(curr, x + 1, y)) {
+            } else if (canMove(curr, x + 1, y)) {
                 x += 1;
-            }
-            // 그래도 안 되면 롤백
-            else {
+            } else {
                 curr = backup;
                 x = oldX;
                 y = oldY;
             }
         }
-
         drawBoard();
     }
 
+    // ===== 이동/낙하 =====
     protected void moveDown() {
         if (canMove(curr, x, y + 1)) {
             y++;
@@ -408,13 +168,16 @@ public class Board extends JFrame {
             for (int j = 0; j < curr.height(); j++) {
                 for (int i = 0; i < curr.width(); i++) {
                     if (curr.getShape(i, j) == 1) {
-                        board[y + j][x + i] = curr.getColor();
+                        int bx = x + i, by = y + j;
+                        if (bx >= 0 && bx < WIDTH && by >= 0 && by < HEIGHT) {
+                            board[by][bx] = curr.getColor();
+                        }
                     }
                 }
             }
             clearLines();
 
-            // 다음 블럭 큐에서 가져오기
+            // 새 블럭
             curr = nextBlocks.poll();
             nextBlocks.add(getRandomBlock());
             x = 3;
@@ -424,9 +187,27 @@ public class Board extends JFrame {
                 gameOver();
             }
         }
-        drawBoard();
     }
 
+    protected void moveRight() {
+        if (canMove(curr, x + 1, y))
+            x++;
+    }
+
+    protected void moveLeft() {
+        if (canMove(curr, x - 1, y))
+            x--;
+    }
+
+    protected void hardDrop() {
+        while (canMove(curr, x, y + 1)) {
+            y++;
+            score += 2;
+        }
+        moveDown();
+    }
+
+    // ===== 줄 삭제/난이도 =====
     private void clearLines() {
         for (int i = 0; i < HEIGHT; i++) {
             boolean full = true;
@@ -443,11 +224,8 @@ public class Board extends JFrame {
                 board[0] = new Color[WIDTH];
                 score += 100;
                 clearedLines++;
-
-                // 난이도 상승 체크
-                if (clearedLines % 10 == 0) {
+                if (clearedLines % 10 == 0)
                     increaseSpeed();
-                }
             }
         }
     }
@@ -456,53 +234,19 @@ public class Board extends JFrame {
         int newDelay = Math.max(200, timer.getDelay() - 100);
         timer.setDelay(newDelay);
         speedLevel++;
-        System.out.println("난이도 상승! 레벨: " + speedLevel + ", 딜레이: " + newDelay + "ms");
+        setStatus("Level Up! " + speedLevel);
     }
 
     private void gameOver() {
         timer.stop();
-        System.out.println("GAME OVER! Score: " + score);
+        setStatus("GAME OVER! Score: " + score);
     }
 
-    protected void moveRight() {
-        if (canMove(curr, x + 1, y))
-            x++;
-        drawBoard();
-    }
-
-    protected void moveLeft() {
-        if (canMove(curr, x - 1, y))
-            x--;
-        drawBoard();
-    }
-
-    protected void hardDrop() {
-        while (canMove(curr, x, y + 1)) {
-            y++;
-            score += 2;
-        }
-        moveDown();
-    }
-
-    // 일시정지 토글
-    private void togglePause() {
-        isPaused = !isPaused;
-        System.out.println(isPaused ? "게임 일시정지" : "게임 재개");
-    }
-
-    // 게임 종료 처리
-    private void exitGame() {
-        timer.stop();
-        System.out.println("게임 종료. 최종 점수: " + score);
-        System.exit(0);
-    }
-
-    // 키 바인딩 설정 (즉시 반응 & 반복 입력 지원)
+    // ===== 키 바인딩 =====
     private void setupKeyBindings() {
-        InputMap im = pane.getInputMap(JComponent.WHEN_FOCUSED);
-        ActionMap am = pane.getActionMap();
-
-        pane.setFocusTraversalKeysEnabled(false);
+        InputMap im = rootPanel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = rootPanel.getActionMap();
+        rootPanel.setFocusTraversalKeysEnabled(false);
 
         im.put(KeyStroke.getKeyStroke("RIGHT"), "moveRight");
         im.put(KeyStroke.getKeyStroke("LEFT"), "moveLeft");
@@ -556,70 +300,104 @@ public class Board extends JFrame {
     public void drawBoard() {
         StringBuilder sb = new StringBuilder();
 
-        // 상단 테두리
+        // ====== 보드 문자열 구성 ======
+        // 윗 테두리
         for (int t = 0; t < WIDTH + 2; t++)
             sb.append(BORDER_CHAR);
         sb.append("\n");
 
+        // 내부
         for (int i = 0; i < HEIGHT; i++) {
-            sb.append(BORDER_CHAR);
+            sb.append(BORDER_CHAR); // 왼쪽 테두리
             for (int j = 0; j < WIDTH; j++) {
                 if (board[i][j] != null || isCurrBlockAt(j, i)) {
-                    sb.append("O");
+                    sb.append("O"); // 블록
                 } else {
-                    sb.append(" ");
+                    sb.append(" "); // 빈칸은 그냥 공백
                 }
             }
-            sb.append(BORDER_CHAR);
-            sb.append("\n");
+            sb.append(BORDER_CHAR).append("\n"); // 오른쪽 테두리
         }
 
+        // 아랫 테두리
         for (int t = 0; t < WIDTH + 2; t++)
             sb.append(BORDER_CHAR);
+
+        // 게임 정보
         sb.append("\nSCORE: ").append(score);
         sb.append("\nLEVEL: ").append(speedLevel);
         sb.append("\nNEXT: ").append(nextBlocks.peek().getClass().getSimpleName());
-        sb.append("\n").append(isPaused ? "[일시정지]" : "");
+        if (isPaused)
+            sb.append("\n[일시정지]");
 
+        // ====== 텍스트 반영 ======
         pane.setText(sb.toString());
         StyledDocument doc = pane.getStyledDocument();
 
-        // 기본 폰트 스타일
-        SimpleAttributeSet baseStyle = new SimpleAttributeSet();
-        StyleConstants.setFontFamily(baseStyle, "Courier New");
-        StyleConstants.setFontSize(baseStyle, 18);
-        StyleConstants.setForeground(baseStyle, Color.WHITE);
-        doc.setParagraphAttributes(0, doc.getLength(), baseStyle, false);
-
-        // 블럭 색칠
+        // ====== 색칠 ======
+        // 전체 문자열 좌표 순회 (테두리 포함)
         for (int i = 0; i < HEIGHT; i++) {
             for (int j = 0; j < WIDTH; j++) {
-                Color c = board[i][j];
-                if (isCurrBlockAt(j, i))
+                Color c = null;
+
+                // 보드 블록
+                if (board[i][j] != null) {
+                    c = board[i][j];
+                }
+                // 현재 움직이는 블록
+                if (isCurrBlockAt(j, i)) {
                     c = curr.getColor();
+                }
+
                 if (c != null) {
                     SimpleAttributeSet blockStyle = new SimpleAttributeSet();
-                    StyleConstants.setFontFamily(blockStyle, "Courier New");
-                    StyleConstants.setFontSize(blockStyle, 18);
                     StyleConstants.setForeground(blockStyle, c);
-                    int pos = (i + 1) * (WIDTH + 3) + (j + 1);
+                    int pos = (i + 1) * (WIDTH + 3) + (j + 1); // 줄바꿈 포함 offset
                     doc.setCharacterAttributes(pos, 1, blockStyle, true);
                 }
             }
         }
+
+        // ====== 테두리 색칠 ======
+        Color borderColor = Color.LIGHT_GRAY; // 테두리 색
+        SimpleAttributeSet borderStyle = new SimpleAttributeSet();
+        StyleConstants.setForeground(borderStyle, borderColor);
+
+        String text = pane.getText();
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (ch == BORDER_CHAR) {
+                doc.setCharacterAttributes(i, 1, borderStyle, true);
+            }
+        }
+
+        scoreLabel.setText("Score: " + score);
     }
 
     private boolean isCurrBlockAt(int j, int i) {
         for (int dy = 0; dy < curr.height(); dy++) {
             for (int dx = 0; dx < curr.width(); dx++) {
                 if (curr.getShape(dx, dy) == 1) {
-                    if (i == y + dy && j == x + dx) {
+                    if (i == y + dy && j == x + dx)
                         return true;
-                    }
                 }
             }
         }
         return false;
     }
 
+    private void togglePause() {
+        isPaused = !isPaused;
+        setStatus(isPaused ? "Paused" : "Playing");
+    }
+
+    private void exitGame() {
+        timer.stop();
+        System.exit(0);
+    }
+
+    public void setStatus(String text) {
+        if (statusLabel != null)
+            statusLabel.setText(text);
+    }
 }
