@@ -53,13 +53,12 @@ public class Board extends JFrame {
     // 점수/난이도
     private int score = 0;
     private int clearedLines = 0;
-    private int speedLevel = 1;
 
     private BlockBag bag = new BlockBag();
 
     private javax.swing.Timer timer;
     private boolean isPaused = false;
-    private static final int initInterval = 1000;
+    private final SpeedManager speedManager = new SpeedManager();
 
     public Board() {
         super("SeoulTech SE Tetris");
@@ -101,7 +100,7 @@ public class Board extends JFrame {
         curr = bag.next();
 
         // ===== 게임 루프 타이머 =====
-        timer = new javax.swing.Timer(initInterval, e -> {
+        timer = new javax.swing.Timer(speedManager.getDropInterval(), e -> {
             if (!isPaused) {
                 moveDown();
                 drawBoard();
@@ -240,16 +239,10 @@ public class Board extends JFrame {
                 score += 100;
                 clearedLines++;
                 if (clearedLines % 10 == 0)
-                    increaseSpeed();
+                    speedManager.increaseLevel();
+                    timer.setDelay(speedManager.getDropInterval());
             }
         }
-    }
-
-    private void increaseSpeed() {
-        int newDelay = Math.max(200, timer.getDelay() - 100);
-        timer.setDelay(newDelay);
-        speedLevel++;
-        setStatus("Level Up! " + speedLevel);
     }
 
     private void gameOver() {
@@ -340,7 +333,7 @@ public class Board extends JFrame {
 
         // 게임 정보
         sb.append("\nSCORE: ").append(score);
-        sb.append("\nLEVEL: ").append(speedLevel);
+        sb.append("\nLEVEL: ").append(speedManager.getLevel());
         sb.append("\nNEXT: ").append(bag.peekNext(1).get(0).getClass().getSimpleName());
         if (isPaused)
             sb.append("\n[일시정지]");
