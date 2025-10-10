@@ -1,13 +1,16 @@
-package component;
+package launcher;
+
+import component.Board;
+import component.MenuPanel;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 
-public class App {
+public class GameLauncher {
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new App().show());
+        SwingUtilities.invokeLater(() -> new GameLauncher().show());
     }
 
     enum Screen { MENU, SETTINGS, SCOREBOARD }
@@ -40,14 +43,12 @@ public class App {
         root.requestFocusInWindow();
     }
 
-
     private JPanel stubPanel(String text) {
         JPanel p = new JPanel(new BorderLayout());
         JLabel l = new JLabel(text, SwingConstants.CENTER);
         l.setFont(l.getFont().deriveFont(Font.PLAIN, 18f));
         p.add(l, BorderLayout.CENTER);
 
-    
         InputMap im = p.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap am = p.getActionMap();
         im.put(KeyStroke.getKeyStroke("ESCAPE"), "back");
@@ -56,6 +57,7 @@ public class App {
                 showScreen(Screen.MENU);
             }
         });
+
         return p;
     }
 
@@ -69,7 +71,6 @@ public class App {
     }
 
     private void launchBoard() {
-
         frame.setVisible(false);
 
         Board game = new Board();
@@ -77,7 +78,6 @@ public class App {
         game.setLocationRelativeTo(null);
         game.setVisible(true);
 
-        
         SwingUtilities.invokeLater(() -> {
             game.requestFocusInWindow();
             game.requestFocus();
