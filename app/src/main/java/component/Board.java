@@ -41,6 +41,7 @@ public class Board extends JFrame {
     private boolean isFullScreen = false;
     private Rectangle normalBounds;
     private GraphicsDevice graphicsDevice;
+    private ColorBlindPalette.Mode colorMode = ColorBlindPalette.Mode.NORMAL;
 
     private final GamePanel gamePanel;
     private final javax.swing.Timer timer;
@@ -182,13 +183,35 @@ public class Board extends JFrame {
         im.put(KeyStroke.getKeyStroke("P"), "pause");
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_F11, 0), "fullscreen");
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "exit");
+        im.put(KeyStroke.getKeyStroke("C"), "toggleColorBlind");
 
         am.put("left", new AbstractAction() { public void actionPerformed(ActionEvent e) { logic.moveLeft(); drawBoard(); }}); 
         am.put("right", new AbstractAction(){ public void actionPerformed(ActionEvent e) { logic.moveRight(); drawBoard(); }}); 
         am.put("down", new AbstractAction() { public void actionPerformed(ActionEvent e) { logic.moveDown(); drawBoard(); }}); 
         am.put("rotate", new AbstractAction(){ public void actionPerformed(ActionEvent e) { logic.rotateBlock(); drawBoard(); }}); 
         am.put("drop", new AbstractAction()   { public void actionPerformed(ActionEvent e) { logic.hardDrop(); drawBoard(); }}); 
-        am.put("pause", new AbstractAction()  { public void actionPerformed(ActionEvent e) { /* TODO: toggle pause */ }}); 
+        am.put("pause", new AbstractAction() {public void actionPerformed(ActionEvent e) {
+                if (timer.isRunning()) {
+                    timer.stop();
+                    setTitle("TETRIS (PAUSED)");
+                } else {
+                    timer.start();
+                    setTitle("TETRIS");
+                }
+            }
+        });
+        am.put("toggleColorBlind", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                switch (colorMode) {
+                    case NORMAL -> colorMode = ColorBlindPalette.Mode.PROTAN;
+                    case PROTAN -> colorMode = ColorBlindPalette.Mode.DEUTER;
+                    case DEUTER -> colorMode = ColorBlindPalette.Mode.TRITAN;
+                    case TRITAN -> colorMode = ColorBlindPalette.Mode.NORMAL;
+                }
+                setTitle("TETRIS - " + colorMode.name() + " mode");
+                drawBoard();
+            }
+        });
         am.put("fullscreen", new AbstractAction(){ public void actionPerformed(ActionEvent e) { toggleFullScreen(); }}); 
         am.put("exit", new AbstractAction(){ public void actionPerformed(ActionEvent e) { System.exit(0); }}); 
     }
@@ -198,7 +221,9 @@ public class Board extends JFrame {
         scoreLabel.setText(String.valueOf(logic.getScore()));
         levelLabel.setText(String.valueOf(logic.getLevel()));
         linesLabel.setText(String.valueOf(logic.getLinesCleared()));
-        updateNextHUD(logic.getBag().peekNext(3));
+
+        timer.setDelay(logic.getDropInterval()); // 드롭 속도 조정
+        updateNextHUD(logic.getNextBlocks());
         gamePanel.repaint();
     }
 
@@ -315,6 +340,10 @@ public class Board extends JFrame {
             int px = col * CELL_SIZE + CELL_GAP;
             int py = row * CELL_SIZE + CELL_GAP;
             int size = CELL_SIZE - CELL_GAP * 2;
+
+            // 색맹모드용 대비 강화 팔레트
+            color = ColorBlindPalette.convert(color, colorMode);
+
             g2.setColor(color);
             g2.fillRoundRect(px, py, size, size, ARC, ARC);
             g2.setColor(new Color(255, 255, 255, 60));
@@ -322,7 +351,7 @@ public class Board extends JFrame {
             g2.setColor(new Color(0, 0, 0, 40));
             g2.fillRoundRect(px, py + size * 2 / 3, size, size / 3, ARC, ARC);
 
-            // ✅ 아이템 블록 문자 오버레이
+            // 아이템 블록 문자 오버레이
             if (block instanceof ItemBlock item) {
                 String symbol = getItemSymbol(item);
                 if (symbol != null) {
@@ -341,8 +370,8 @@ public class Board extends JFrame {
             if (item instanceof LineClearItem) return "L";
             if (item instanceof WeightItem) return "W";
             if (item instanceof DoubleScoreItem) return "D";
-            if (item instanceof RandomClearItem) return "R";
-            if (item instanceof SlowItem) return "S";
+        
+    
             return null;
         }
     }

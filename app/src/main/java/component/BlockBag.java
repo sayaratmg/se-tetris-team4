@@ -38,6 +38,8 @@ public class BlockBag {
         Collections.shuffle(blocks);
         nextBlocks.addAll(blocks);
     }
+
+    
     
     public Block next() {
         if (nextBlocks.isEmpty()) {
@@ -50,4 +52,6 @@ public class BlockBag {
         if (nextBlocks.size() < count) fillBag();
         return new ArrayList<>(nextBlocks).subList(0, Math.min(count, nextBlocks.size()));
     }
+
+    
 }

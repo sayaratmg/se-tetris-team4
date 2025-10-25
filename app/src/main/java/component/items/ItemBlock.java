@@ -14,11 +14,16 @@ public abstract class ItemBlock extends Block {
         super(color, shape);
     }
 
+    // Block 기반 생성자 추가
+    public ItemBlock(Block base) {
+        super(base.getColor(), base.getShapeArray());
+    }
+
     /**
      * 아이템 발동 효과 (BoardLogic에서 호출)
      * 
-     * @param logic       현재 게임 로직
-     * @param onComplete  애니메이션 종료 후 실행할 콜백 (null 가능)
+     * @param logic      현재 게임 로직
+     * @param onComplete 애니메이션 종료 후 실행할 콜백 (null 가능)
      */
-    public abstract void activate(BoardLogic logic,Runnable onComplete);
+    public abstract void activate(BoardLogic logic, Runnable onComplete);
 }
