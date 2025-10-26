@@ -7,6 +7,10 @@ public abstract class Block implements Cloneable {
 	protected int[][] shape;
 	protected Color color;
 
+	protected boolean canRotate = true; // 기본값: 회전 가능
+
+    
+
 	public int[][] getShapeArray() {
 		int[][] copy = new int[shape.length][];
 		for (int i = 0; i < shape.length; i++) {
@@ -38,6 +42,8 @@ public abstract class Block implements Cloneable {
 	}
 
 	public void rotate() {
+		if (!canRotate)
+			return;
 		int h = shape.length;
 		int w = shape[0].length;
 		int[][] rotated = new int[w][h];
@@ -69,7 +75,7 @@ public abstract class Block implements Cloneable {
 			for (int i = 0; i < this.shape.length; i++) {
 				copy.shape[i] = this.shape[i].clone();
 			}
-			// ✅ 색상도 새로운 객체로 복사
+			// 색상도 새로운 객체로 복사
 			copy.color = new Color(this.color.getRGB());
 			return copy;
 		} catch (CloneNotSupportedException e) {

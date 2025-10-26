@@ -168,6 +168,24 @@ public class BoardLogic {
         moveDown();
     }
 
+    // 🧪 디버그용: 다음 블록 강제 설정
+    public void debugSetNextItem(Block itemBlock) {
+        try {
+            var field = bag.getClass().getDeclaredField("nextBlocks");
+            field.setAccessible(true);
+            java.util.Queue<Block> queue = (java.util.Queue<Block>) field.get(bag);
+
+            // 맨 앞 교체 (기존 첫 블록 제거 → 아이템 삽입)
+            if (!queue.isEmpty())
+                queue.poll();
+            queue.add(itemBlock);
+
+            nextIsItem = false; // 일반 next 로직 방해 안 함
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
     // === Getter ===
     public Color[][] getBoard() {
         return state.getBoard();

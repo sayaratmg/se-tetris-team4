@@ -156,9 +156,9 @@ public class Board extends JFrame {
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         String[] controls = {
-            "← → Move", "↑ Rotate", "↓ Soft Drop",
-            "SPACE Hard Drop", "P Pause",
-            "F11 Full Screen", "ESC Exit"
+                "← → Move", "↑ Rotate", "↓ Soft Drop",
+                "SPACE Hard Drop", "P Pause",
+                "F11 Full Screen", "ESC Exit"
         };
         for (String control : controls) {
             JLabel label = new JLabel(control);
@@ -185,12 +185,42 @@ public class Board extends JFrame {
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "exit");
         im.put(KeyStroke.getKeyStroke("C"), "toggleColorBlind");
 
-        am.put("left", new AbstractAction() { public void actionPerformed(ActionEvent e) { logic.moveLeft(); drawBoard(); }}); 
-        am.put("right", new AbstractAction(){ public void actionPerformed(ActionEvent e) { logic.moveRight(); drawBoard(); }}); 
-        am.put("down", new AbstractAction() { public void actionPerformed(ActionEvent e) { logic.moveDown(); drawBoard(); }}); 
-        am.put("rotate", new AbstractAction(){ public void actionPerformed(ActionEvent e) { logic.rotateBlock(); drawBoard(); }}); 
-        am.put("drop", new AbstractAction()   { public void actionPerformed(ActionEvent e) { logic.hardDrop(); drawBoard(); }}); 
-        am.put("pause", new AbstractAction() {public void actionPerformed(ActionEvent e) {
+        // 디버깅용 아이템 키 추가
+        im.put(KeyStroke.getKeyStroke("1"), "debugLineClear");
+        im.put(KeyStroke.getKeyStroke("2"), "debugWeight");
+
+        am.put("left", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                logic.moveLeft();
+                drawBoard();
+            }
+        });
+        am.put("right", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                logic.moveRight();
+                drawBoard();
+            }
+        });
+        am.put("down", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                logic.moveDown();
+                drawBoard();
+            }
+        });
+        am.put("rotate", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                logic.rotateBlock();
+                drawBoard();
+            }
+        });
+        am.put("drop", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                logic.hardDrop();
+                drawBoard();
+            }
+        });
+        am.put("pause", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
                 if (timer.isRunning()) {
                     timer.stop();
                     setTitle("TETRIS (PAUSED)");
@@ -212,8 +242,39 @@ public class Board extends JFrame {
                 drawBoard();
             }
         });
-        am.put("fullscreen", new AbstractAction(){ public void actionPerformed(ActionEvent e) { toggleFullScreen(); }}); 
-        am.put("exit", new AbstractAction(){ public void actionPerformed(ActionEvent e) { System.exit(0); }}); 
+
+        // 디버그 키 동작 ===
+        // === ✅ 디버그 키 동작 ===
+        am.put("debugLineClear", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                if (!logic.isItemMode())
+                    return; // 일반모드에서는 무시
+                logic.debugSetNextItem(new LineClearItem(logic.getCurr()));
+                System.out.println("🧪 Debug: 다음 블록 = LineClearItem");
+                drawBoard();
+            }
+        });
+
+        am.put("debugWeight", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                if (!logic.isItemMode())
+                    return;
+                logic.debugSetNextItem(new WeightItem());
+                System.out.println("🧪 Debug: 다음 블록 = WeightItem");
+                drawBoard();
+            }
+        });
+
+        am.put("fullscreen", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                toggleFullScreen();
+            }
+        });
+        am.put("exit", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                System.exit(0);
+            }
+        });
     }
 
     // === 화면 갱신 ===
@@ -237,7 +298,8 @@ public class Board extends JFrame {
             container.setPreferredSize(new Dimension(120, 80));
 
             JPanel blockPanel = new JPanel() {
-                @Override protected void paintComponent(Graphics g) {
+                @Override
+                protected void paintComponent(Graphics g) {
                     super.paintComponent(g);
                     Graphics2D g2 = (Graphics2D) g;
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -276,7 +338,8 @@ public class Board extends JFrame {
             setUndecorated(true);
             if (graphicsDevice.isFullScreenSupported())
                 graphicsDevice.setFullScreenWindow(this);
-            else setExtendedState(JFrame.MAXIMIZED_BOTH);
+            else
+                setExtendedState(JFrame.MAXIMIZED_BOTH);
             setVisible(true);
             isFullScreen = true;
         } else {
@@ -284,7 +347,8 @@ public class Board extends JFrame {
                 graphicsDevice.setFullScreenWindow(null);
             dispose();
             setUndecorated(false);
-            if (normalBounds != null) setBounds(normalBounds);
+            if (normalBounds != null)
+                setBounds(normalBounds);
             setVisible(true);
             isFullScreen = false;
         }
@@ -298,7 +362,8 @@ public class Board extends JFrame {
             setBorder(BorderFactory.createLineBorder(GRID_LINE, 3));
         }
 
-        @Override protected void paintComponent(Graphics g) {
+        @Override
+        protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -336,6 +401,7 @@ public class Board extends JFrame {
         }
 
         /** 셀 하나를 그리는 함수 */
+        /** 셀 하나를 그리는 함수 */
         private void drawCell(Graphics2D g2, int col, int row, Color color, Block block) {
             int px = col * CELL_SIZE + CELL_GAP;
             int py = row * CELL_SIZE + CELL_GAP;
@@ -351,30 +417,38 @@ public class Board extends JFrame {
             g2.setColor(new Color(0, 0, 0, 40));
             g2.fillRoundRect(px, py + size * 2 / 3, size, size / 3, ARC, ARC);
 
-            // 아이템 블록 문자 오버레이
+            // === 아이템 블록 문자 오버레이 ===
             if (block instanceof ItemBlock item) {
-                String symbol = getItemSymbol(item);
-                if (symbol != null) {
-                    g2.setColor(Color.BLACK);
-                    g2.setFont(new Font("Arial", Font.BOLD, 18));
-                    FontMetrics fm = g2.getFontMetrics();
-                    int tx = px + (size - fm.stringWidth(symbol)) / 2;
-                    int ty = py + (size + fm.getAscent() - fm.getDescent()) / 2;
-                    g2.drawString(symbol, tx, ty);
+                // LineClearItem의 경우: L이 있는 위치만 표시
+                if (item instanceof LineClearItem lineItem) {
+                    // 현재 블록의 화면상 좌표 대비 상대 좌표 계산
+                    int localX = col - logic.getX();
+                    int localY = row - logic.getY();
+                    if (localX == lineItem.getLX() && localY == lineItem.getLY()) {
+                        drawSymbol(g2, "L", px, py, size);
+                    }
                 }
+                // WeightItem은 전체 칸에 'W' 표시
+                else if (item instanceof WeightItem) {
+                    drawSymbol(g2, "W", px, py, size);
+                }
+
             }
         }
 
-        /** 아이템 타입별 문자 */
-        private String getItemSymbol(ItemBlock item) {
-            if (item instanceof LineClearItem) return "L";
-            if (item instanceof WeightItem) return "W";
-            if (item instanceof DoubleScoreItem) return "D";
-        
-    
-            return null;
+        /** 아이템 문자 그리기 공통 함수 */
+        private void drawSymbol(Graphics2D g2, String symbol, int px, int py, int size) {
+            g2.setColor(Color.BLACK);
+            g2.setFont(new Font("Arial", Font.BOLD, 18));
+            FontMetrics fm = g2.getFontMetrics();
+            int tx = px + (size - fm.stringWidth(symbol)) / 2;
+            int ty = py + (size + fm.getAscent() - fm.getDescent()) / 2;
+            g2.drawString(symbol, tx, ty);
         }
+
     }
 
-    public BoardLogic getLogic() { return logic; }
+    public BoardLogic getLogic() {
+        return logic;
+    }
 }

@@ -8,6 +8,7 @@ import java.util.List;
 
 public class ClearService {
     private final GameState state;
+    private boolean skipDuringItem = false;
 
     public ClearService(GameState state) {
         this.state = state;
@@ -97,8 +98,9 @@ public class ClearService {
 
     /** 중력 적용 */
     public void applyGravityInstantly() {
+        if(skipDuringItem) return;
         Color[][] board = state.getBoard();
-        boolean moved;
+        boolean moved; 
 
         do {
             moved = false;
@@ -115,24 +117,30 @@ public class ClearService {
     }
 
     /** 특정 줄 위쪽 블록만 아래로 한 칸씩 내리는 중력 */
-    public void applyGravityFromRow(int clearedY) {
+    public void applyGravityFromRow(int fromRow) {
+        if(skipDuringItem) return;
         Color[][] board = state.getBoard();
 
-        for (int y = clearedY - 1; y >= 0; y--) {
-            for (int x = 0; x < GameState.WIDTH; x++) {
-                if (board[y][x] != null) {
-                    int dropTo = y;
-                    // clearedY까지만 검사 (그 아래는 이미 비었음)
-                    while (dropTo + 1 <= clearedY && board[dropTo + 1][x] == null) {
+        for (int row = fromRow - 1; row >= 0; row--) {
+            for (int col = 0; col < BoardLogic.WIDTH; col++) {
+                if (board[row][col] != null) {
+                    int dropTo = row;
+                    while (dropTo + 1 < BoardLogic.HEIGHT && board[dropTo + 1][col] == null) {
                         dropTo++;
                     }
-                    if (dropTo != y) {
-                        board[dropTo][x] = board[y][x];
-                        board[y][x] = null;
+                    if (dropTo != row) {
+                        board[dropTo][col] = board[row][col];
+                        board[row][col] = null;
                     }
                 }
             }
         }
     }
+    public void setSkipDuringItem(boolean skip) {
+        this.skipDuringItem = skip;
+    }
+    public boolean isSkipDuringItem() {
+        return skipDuringItem;
 
+    }
 }

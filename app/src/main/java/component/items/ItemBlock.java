@@ -10,6 +10,8 @@ import logic.BoardLogic;
  */
 public abstract class ItemBlock extends Block {
 
+    protected boolean testMode=false;
+
     public ItemBlock(Color color, int[][] shape) {
         super(color, shape);
     }
@@ -17,6 +19,10 @@ public abstract class ItemBlock extends Block {
     // Block 기반 생성자 추가
     public ItemBlock(Block base) {
         super(base.getColor(), base.getShapeArray());
+    }
+
+    public void setTestMode(boolean enabled) {
+        this.testMode = enabled;
     }
 
     /**
