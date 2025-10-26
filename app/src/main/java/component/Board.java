@@ -12,9 +12,15 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.util.List;
 
+import component.score.ScoreBoard;
+import launcher.GameLauncher;
+
 public class Board extends JFrame {
 
     private static final long serialVersionUID = 1L;
+    private final ScoreBoard scoreBoard = ScoreBoard.createDefault();
+    private JPanel overlay;        
+    private JPanel dialogPanel;    
 
     // === 시각용 상수 ===
     private static final int CELL_SIZE = 35;
@@ -104,6 +110,22 @@ public class Board extends JFrame {
 
         add(root);
         setupKeys(gamePanel);
+
+        pack();
+        setLocationRelativeTo(null);
+        setVisible(true);
+
+        // === 오버레이 생성 & 부착 ===
+        initOverlay();
+        // 프레임/레이아웃 계산이 끝난 뒤 크기 맞추기
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentResized(java.awt.event.ComponentEvent e) {
+                if (overlay != null) overlay.setBounds(0, 0, getWidth(), getHeight());
+            }
+            @Override public void componentShown(java.awt.event.ComponentEvent e) {
+                if (overlay != null) overlay.setBounds(0, 0, getWidth(), getHeight());
+            }
+        });
 
         pack();
         setLocationRelativeTo(null);
@@ -262,11 +284,10 @@ public class Board extends JFrame {
     }
 
     private void showGameOver(int score) {
-        JOptionPane.showMessageDialog(this,
-                "게임 종료!\n최종 점수: " + score,
-                "Game Over", JOptionPane.INFORMATION_MESSAGE);
         timer.stop();
-        dispose();
+        setStatus("GAME OVER! Score: " + score);
+        showNameInputOverlay(score);
+
     }
 
     private void toggleFullScreen() {
@@ -371,9 +392,167 @@ public class Board extends JFrame {
             if (item instanceof WeightItem) return "W";
             if (item instanceof DoubleScoreItem) return "D";
         
-    
             return null;
         }
+    }
+
+        // === 오버레이(모달창) 초기화 ===
+        private void initOverlay() {
+        overlay = new JPanel(null) { // null layout: 가운데 카드 위치 직접 지정
+            @Override public boolean isOpaque() { return true; }
+        };
+        overlay.setBackground(new Color(0, 0, 0, 150)); // 반투명 검정
+        overlay.setBounds(0, 0, getWidth(), getHeight());
+        overlay.setVisible(false);
+
+        // 마우스/키 입력 차단(아무것도 하지 않게 소비)
+        overlay.addMouseListener(new java.awt.event.MouseAdapter() {});
+        overlay.addKeyListener(new java.awt.event.KeyAdapter() {});
+
+        // 가운데 카드
+        dialogPanel = new JPanel(new BorderLayout(8,8));
+        dialogPanel.setBorder(BorderFactory.createEmptyBorder(12,12,12,12));
+        dialogPanel.setBackground(new Color(245, 246, 250));
+        dialogPanel.setOpaque(true);
+
+        // 초기 크기 & 위치(가운데)
+        int w = 420, h = 360;
+        dialogPanel.setBounds((getWidth()-w)/2, (getHeight()-h)/2, w, h);
+        overlay.add(dialogPanel);
+
+        // 창 크기 바뀌면 가운데 유지
+        overlay.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentResized(java.awt.event.ComponentEvent e) {
+                int W = overlay.getWidth(), H = overlay.getHeight();
+                int ww = dialogPanel.getWidth(), hh = dialogPanel.getHeight();
+                dialogPanel.setLocation((W-ww)/2, (H-hh)/2);
+            }
+        });
+
+        // 프레임의 레이어드페인에 올림(같은 창 내부에서 모달처럼 보임)
+        getLayeredPane().add(overlay, javax.swing.JLayeredPane.POPUP_LAYER);
+    }
+
+    /** 스코어보드 오버레이 표시 */
+    private void showScoreboardOverlay(int highlightIndex) {
+        if (dialogPanel.getParent() != overlay) {
+            overlay.add(dialogPanel);
+        }
+
+        String[] cols = {"순위", "이름", "점수", "기록 시간"};
+        javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        var F = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        var list = scoreBoard.getEntries();
+        for (int i = 0; i < list.size(); i++) {
+            var e = list.get(i);
+            model.addRow(new Object[]{ i + 1, e.name(), e.score(), F.format(e.at()) });
+        }
+
+        JTable table = new JTable(model);
+        table.setFillsViewportHeight(true);
+
+        // 하이라이트 효과
+        if (highlightIndex >= 0 && highlightIndex < table.getRowCount()) {
+            table.setRowSelectionInterval(highlightIndex, highlightIndex);
+            table.setSelectionBackground(new Color(255, 230, 180)); // 부드러운 주황
+            table.setSelectionForeground(Color.BLACK);
+        }
+
+        JLabel title = new JLabel("스코어보드", JLabel.CENTER);
+        title.setFont(new Font("Arial", Font.BOLD, 18));
+        title.setBorder(BorderFactory.createEmptyBorder(4, 4, 8, 4));
+
+        JPanel btns = new JPanel();
+        JButton retry = new JButton("다시하기");
+        JButton home = new JButton("홈으로");
+        btns.add(retry);
+        btns.add(home);
+
+        dialogPanel.removeAll();
+        dialogPanel.setLayout(new BorderLayout(8, 8));
+        dialogPanel.add(title, BorderLayout.NORTH);
+        dialogPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+        dialogPanel.add(btns, BorderLayout.SOUTH);
+        dialogPanel.revalidate();
+        dialogPanel.repaint();
+
+        retry.addActionListener(e -> {
+            hideOverlay();
+            // restartGame();
+        });
+        home.addActionListener(e -> {
+            hideOverlay();
+            timer.stop();        
+            dispose();           
+
+            new GameLauncher();  
+        });
+
+        overlay.setVisible(true);
+        overlay.requestFocusInWindow();
+    }
+
+    /** 오버레이 닫기 */
+    private void hideOverlay() {
+        overlay.setVisible(false);
+    }
+
+    /** 상태창 텍스트 변경 (타이틀바 업데이트용) */
+    public void setStatus(String text) {
+        setTitle("TETRIS - " + text);
+    }
+
+    /** 이름 입력 오버레이 표시 (게임 종료 후 점수 등록용) */
+    private void showNameInputOverlay(int score) {
+        overlay.setVisible(true);
+        
+        dialogPanel.removeAll();
+        dialogPanel.setLayout(new BorderLayout(8, 8));
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(new Color(255, 255, 255, 230));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JLabel subtitle = new JLabel("이름을 입력하세요:");
+        subtitle.setFont(new Font("Arial", Font.PLAIN, 14));
+        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JTextField nameField = new JTextField("PLAYER", 12);
+        nameField.setMaximumSize(new Dimension(200, 30));
+        nameField.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JButton ok = new JButton("확인");
+        JButton cancel = new JButton("취소");
+        ok.setAlignmentX(Component.CENTER_ALIGNMENT);
+        cancel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        panel.add(subtitle);
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(nameField);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(ok);
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(cancel);
+
+        dialogPanel.add(panel, BorderLayout.CENTER);
+
+        // 버튼 동작
+        ok.addActionListener(e -> {
+            String name = nameField.getText().isBlank() ? "PLAYER" : nameField.getText();
+            int rankIndex = scoreBoard.addScore(name, score);  // 내 순위
+            showScoreboardOverlay(rankIndex);                  // 내 순위 전달
+        });
+
+        cancel.addActionListener(e -> {
+            hideOverlay();
+            setStatus("GAME OVER");
+        });
+
+        overlay.revalidate();
+        overlay.repaint();
     }
 
     public BoardLogic getLogic() { return logic; }
