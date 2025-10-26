@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Consumer;
 
+import component.score.ScoreBoard;
+
 public class Settings {
     // 조작 키
     public enum Action { Left, Right, SoftDrop, HardDrop, Rotate }
@@ -22,6 +24,12 @@ public class Settings {
 
     private static final Path PATH = Paths.get("config/settings.properties");
     private final List<Consumer<Settings>> listeners = new ArrayList<>();
+
+    private ScoreBoard scoreBoard;
+
+    public void setScoreBoard(ScoreBoard scoreBoard) {
+        this.scoreBoard = scoreBoard;
+    }
 
     // 화면 크기
     public enum ScreenSize { SMALL, MEDIUM, LARGE };
@@ -127,6 +135,15 @@ public class Settings {
 
     // ===== 스코어보드 초기화 =====
     public void resetScoreBoard() {
-        // 추후 구현..
+        try {
+            if (scoreBoard != null) {
+                scoreBoard.reset();           
+            } else {
+                ScoreBoard.createDefault().reset(); 
+            }
+            listeners.forEach(l -> l.accept(this)); 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
