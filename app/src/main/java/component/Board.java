@@ -290,25 +290,25 @@ public class Board extends JFrame {
 
     }
 
-        private void toggleFullScreen() {
-            if (!isFullScreen) {
-                normalBounds = getBounds();
-                dispose();
-                setUndecorated(true);
-                if (graphicsDevice.isFullScreenSupported())
-                    graphicsDevice.setFullScreenWindow(this);
-                else setExtendedState(JFrame.MAXIMIZED_BOTH);
-                setVisible(true);
-                isFullScreen = true;
-            } else {
-                if (graphicsDevice.isFullScreenSupported())
-                    graphicsDevice.setFullScreenWindow(null);
-                dispose();
-                setUndecorated(false);
-                if (normalBounds != null) setBounds(normalBounds);
-                setVisible(true);
-                isFullScreen = false;
-            }
+    private void toggleFullScreen() {
+        if (!isFullScreen) {
+            normalBounds = getBounds();
+            dispose();
+            setUndecorated(true);
+            if (graphicsDevice.isFullScreenSupported())
+                graphicsDevice.setFullScreenWindow(this);
+            else setExtendedState(JFrame.MAXIMIZED_BOTH);
+            setVisible(true);
+            isFullScreen = true;
+        } else {
+            if (graphicsDevice.isFullScreenSupported())
+                graphicsDevice.setFullScreenWindow(null);
+            dispose();
+            setUndecorated(false);
+            if (normalBounds != null) setBounds(normalBounds);
+            setVisible(true);
+            isFullScreen = false;
+        }
     }
 
     // === 내부 패널: 게임판 렌더링 ===
