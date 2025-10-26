@@ -98,9 +98,10 @@ public class ClearService {
 
     /** 중력 적용 */
     public void applyGravityInstantly() {
-        if(skipDuringItem) return;
+        if (skipDuringItem)
+            return;
         Color[][] board = state.getBoard();
-        boolean moved; 
+        boolean moved;
 
         do {
             moved = false;
@@ -118,14 +119,14 @@ public class ClearService {
 
     /** 특정 줄 위쪽 블록만 아래로 한 칸씩 내리는 중력 */
     public void applyGravityFromRow(int fromRow) {
-        if(skipDuringItem) return;
         Color[][] board = state.getBoard();
 
-        for (int row = fromRow - 1; row >= 0; row--) {
-            for (int col = 0; col < BoardLogic.WIDTH; col++) {
+        for (int col = 0; col < BoardLogic.WIDTH; col++) {
+            for (int row = GameState.HEIGHT - 2; row >= 0; row--) {
                 if (board[row][col] != null) {
                     int dropTo = row;
-                    while (dropTo + 1 < BoardLogic.HEIGHT && board[dropTo + 1][col] == null) {
+                    // 🔽 바닥까지 완전히 검사 (삭제된 줄 포함)
+                    while (dropTo + 1 < GameState.HEIGHT && board[dropTo + 1][col] == null) {
                         dropTo++;
                     }
                     if (dropTo != row) {
@@ -136,9 +137,11 @@ public class ClearService {
             }
         }
     }
+
     public void setSkipDuringItem(boolean skip) {
         this.skipDuringItem = skip;
     }
+
     public boolean isSkipDuringItem() {
         return skipDuringItem;
 

@@ -3,6 +3,7 @@ package component.items;
 import java.awt.Color;
 import java.util.Random;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 import blocks.Block;
 import logic.BoardLogic;
@@ -10,15 +11,15 @@ import logic.ClearService;
 
 /**
  * LineClearItem
- * - 착지 시 'L'이 위치한 줄을 삭제 (꽉 차 있지 않아도 삭제)
- * - 삭제 후 위의 블록들이 중력에 의해 낙하
- * - 회전 시에도 'L' 표시가 함께 회전됨
- * - 중복 중력 적용 방지 포함
+ * - 블록 내 한 칸에 'L'이 붙음 (무작위)
+ * - 회전 시에도 L 위치가 함께 회전
+ * - 착지 시 L이 위치한 줄 삭제 (꽉 차지 않아도)
+ * - 삭제 후 위쪽 블록 중력 낙하 (중복 방지 + 보장 처리)
  */
 public class LineClearItem extends ItemBlock {
 
     private final Block base;
-    private int lX; // 표시 위치
+    private int lX; // L 문자 위치 (shape 내 좌표)
     private int lY;
     private static final Random rand = new Random();
 
@@ -45,22 +46,21 @@ public class LineClearItem extends ItemBlock {
     public int getLX() { return lX; }
     public int getLY() { return lY; }
 
-    /** 회전 시 L 위치도 회전하도록 */
+    /** 회전 시 L 위치도 함께 회전 (시계 방향 기준) */
     @Override
     public void rotate() {
         super.rotate();
 
-        // 새 shape 기준으로 L 좌표 회전
         int newH = shape.length;
         int newW = shape[0].length;
         int oldLX = lX;
         int oldLY = lY;
 
-        // 시계 방향 회전 기준 변환
+        // 회전 좌표 변환 (시계 방향)
         this.lX = newW - 1 - oldLY;
         this.lY = oldLX;
 
-        // 혹시 해당 위치가 비활성 칸(0)이면 다시 랜덤 지정
+        // 혹시 비활성 칸(0)에 들어가면 다시 랜덤 배치
         if (shape[lY][lX] == 0) {
             assignRandomL();
         }
@@ -76,24 +76,16 @@ public class LineClearItem extends ItemBlock {
         }
 
         var board = logic.getBoard();
-        ClearService clear = logic.getClearService();
+        var clear = logic.getClearService();
 
-        // ✅ 테스트 모드: 즉시 삭제 + 중력 적용
+        // 🧪 테스트 모드: 즉시 삭제 + 중력 적용
         if (testMode) {
             for (int x = 0; x < BoardLogic.WIDTH; x++)
                 board[targetY][x] = null;
 
-            // 🔒 중복 중력 방지
-            if (!clear.isSkipDuringItem()) {
-                clear.setSkipDuringItem(true);
-                new javax.swing.Timer(50, e -> {
-                    clear.applyGravityFromRow(targetY);
-                    clear.setSkipDuringItem(false);
-                    ((javax.swing.Timer) e.getSource()).stop();
-                }).start();
-            }
-
+            safeApplyGravity(clear, targetY);
             logic.addScore(100);
+
             if (logic.getOnFrameUpdate() != null)
                 logic.getOnFrameUpdate().run();
             if (onComplete != null)
@@ -101,19 +93,10 @@ public class LineClearItem extends ItemBlock {
             return;
         }
 
-        // 🎮 실제 게임 모드: 애니메이션 + 중력 적용
+        // 🎮 실제 게임 모드: 페이드 애니메이션 + 중력
         SwingUtilities.invokeLater(() -> {
             clear.animateRowClearSequential(targetY, logic.getOnFrameUpdate(), () -> {
-                // 🔒 중복 중력 방지
-                if (!clear.isSkipDuringItem()) {
-                    clear.setSkipDuringItem(true);
-                    new javax.swing.Timer(60, e -> {
-                        clear.applyGravityFromRow(targetY);
-                        clear.setSkipDuringItem(false);
-                        ((javax.swing.Timer) e.getSource()).stop();
-                    }).start();
-                }
-
+                safeApplyGravity(clear, targetY);
                 logic.addScore(100);
                 if (logic.getOnFrameUpdate() != null)
                     logic.getOnFrameUpdate().run();
@@ -121,5 +104,31 @@ public class LineClearItem extends ItemBlock {
                     onComplete.run();
             });
         });
+    }
+
+    /**
+     * 안전한 중력 적용:
+     * - 이미 다른 아이템이 중력 중이면 일정 시간 대기 후 재시도
+     * - 항상 한 번은 applyGravityFromRow()가 실행되도록 보장
+     */
+    private void safeApplyGravity(ClearService clear, int targetY) {
+        if (clear == null) return;
+
+        // 이미 다른 아이템이 중력 처리 중이면 → 잠시 후 재시도
+        if (clear.isSkipDuringItem()) {
+            new Timer(80, e -> {
+                ((Timer) e.getSource()).stop();
+                safeApplyGravity(clear, targetY); // 재귀적 재시도
+            }).start();
+            return;
+        }
+
+        // 현재 중력 수행
+        clear.setSkipDuringItem(true);
+        new Timer(100, e -> {
+            clear.applyGravityFromRow(targetY);
+            clear.setSkipDuringItem(false);
+            ((Timer) e.getSource()).stop();
+        }).start();
     }
 }

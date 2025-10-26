@@ -1,4 +1,3 @@
-
 package component;
 
 import logic.BoardLogic;
@@ -17,6 +16,8 @@ import launcher.GameLauncher;
 
 public class Board extends JFrame {
 
+    public boolean isRestarting = false;
+    private PausePanel pausePanel;
     private static final long serialVersionUID = 1L;
     private final ScoreBoard scoreBoard = ScoreBoard.createDefault();
     private JPanel overlay;
@@ -117,6 +118,7 @@ public class Board extends JFrame {
 
         // === 오버레이 생성 & 부착 ===
         initOverlay();
+
         // 프레임/레이아웃 계산이 끝난 뒤 크기 맞추기
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
@@ -144,6 +146,27 @@ public class Board extends JFrame {
             }
         });
         timer.start();
+
+        // === 일시정지 패널 ===
+        pausePanel = new PausePanel(
+                this,
+                () -> { // Resume
+                    timer.start();
+                    pausePanel.hidePanel();
+                    setTitle("TETRIS");
+                },
+                () -> { // Restart
+                    isRestarting = true;
+                    timer.stop();
+                    dispose(); // 현재 창 닫기
+                    new Board(); // 새 게임 시작
+                },
+
+                () -> { // Exit to Menu
+                    timer.stop();
+                    dispose();
+                    new GameLauncher();
+                });
     }
 
     private JPanel createStatPanel(String label, JLabel valueLabel) {
@@ -248,15 +271,18 @@ public class Board extends JFrame {
         });
         am.put("pause", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
-                if (timer.isRunning()) {
-                    timer.stop();
-                    setTitle("TETRIS (PAUSED)");
-                } else {
+                if (pausePanel.isVisible()) {
+                    pausePanel.hidePanel();
                     timer.start();
                     setTitle("TETRIS");
+                } else {
+                    timer.stop();
+                    setTitle("TETRIS (PAUSED)");
+                    pausePanel.showPanel();
                 }
             }
         });
+
         am.put("toggleColorBlind", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
                 switch (colorMode) {
@@ -645,6 +671,10 @@ public class Board extends JFrame {
 
     public BoardLogic getLogic() {
         return logic;
+    }
+
+    public boolean isRestarting() {
+        return isRestarting;
     }
 
 }

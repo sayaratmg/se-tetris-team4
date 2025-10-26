@@ -14,8 +14,10 @@ public class GameLauncher {
         SwingUtilities.invokeLater(() -> new GameLauncher().show());
     }
 
-    enum Screen { MENU, SETTINGS, SCOREBOARD }
-
+    enum Screen {
+        MENU, SETTINGS, SCOREBOARD
+    }
+    
     private final JFrame frame = new JFrame("TETRIS");
     private final CardLayout cards = new CardLayout();
     private final JPanel root = new JPanel(cards);
@@ -90,6 +92,9 @@ public class GameLauncher {
         game.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent e) {
+                //  Restart인 경우엔 메뉴창 안 띄움
+                if (game instanceof Board board && board.isRestarting)
+                    return;
                 frame.setVisible(true);
                 showScreen(Screen.MENU);
             }
