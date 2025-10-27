@@ -238,6 +238,7 @@ public class Board extends JFrame {
         // 디버깅용 아이템 키 추가
         im.put(KeyStroke.getKeyStroke("1"), "debugLineClear");
         im.put(KeyStroke.getKeyStroke("2"), "debugWeight");
+        im.put(KeyStroke.getKeyStroke("3"), "debugSpinLock");
 
         am.put("left", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
@@ -297,7 +298,6 @@ public class Board extends JFrame {
         });
 
         // 디버그 키 동작 ===
-        // === ✅ 디버그 키 동작 ===
         am.put("debugLineClear", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
                 if (!logic.isItemMode())
@@ -314,6 +314,16 @@ public class Board extends JFrame {
                     return;
                 logic.debugSetNextItem(new WeightItem());
                 System.out.println("🧪 Debug: 다음 블록 = WeightItem");
+                drawBoard();
+            }
+        });
+
+        am.put("debugSpinLock", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                if (!logic.isItemMode())
+                    return;
+                logic.debugSetNextItem(new SpinLockItem(logic.getCurr()));
+                System.out.println("🧪 Debug: 다음 블록 = SpinLockItem (회전금지)");
                 drawBoard();
             }
         });
@@ -448,6 +458,7 @@ public class Board extends JFrame {
                     }
                 }
             }
+            
 
             g2.dispose();
         }
@@ -484,8 +495,11 @@ public class Board extends JFrame {
                 else if (item instanceof WeightItem) {
                     drawSymbol(g2, "W", px, py, size);
                 }
+                // SpinLockItem은 전체 칸에 자물쇠 기호 표시
+                else if (item instanceof SpinLockItem) {
+                    drawSymbol(g2, SpinLockItem.getSymbol(), px, py, size);
 
-            }
+            }}
         }
 
         /** 아이템 문자 그리기 공통 함수 */
