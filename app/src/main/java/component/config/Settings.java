@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Consumer;
 
+import component.ColorBlindPalette;
+import component.config.Settings.ScreenSize;
 import component.score.ScoreBoard;
 
 public class Settings {
@@ -19,8 +21,8 @@ public class Settings {
     public enum Action { Left, Right, SoftDrop, HardDrop, Rotate }
 
     public boolean blindMode = false;
-
-    public Map<Action, Integer> keymap = new EnumMap<>(Action.class);
+    public ColorBlindPalette.Mode colorBlindMode = ColorBlindPalette.Mode.NORMAL; // ✅ 추가
+    public final Map<Action, Integer> keymap = new EnumMap<>(Action.class);
 
     private static final Path PATH = Paths.get("config/settings.properties");
     private final List<Consumer<Settings>> listeners = new ArrayList<>();
@@ -40,6 +42,7 @@ public class Settings {
     private void applyDefaults() {
         blindMode = false;
         screenSize = ScreenSize.MEDIUM;
+        colorBlindMode = ColorBlindPalette.Mode.NORMAL; 
         keymap.clear();
         keymap.put(Action.Left, 37);
         keymap.put(Action.Right, 39);
@@ -63,6 +66,8 @@ public class Settings {
             s.screenSize = ScreenSize.valueOf(
                 p.getProperty("screenSize", s.screenSize.name())
             );
+            s.colorBlindMode = ColorBlindPalette.Mode.valueOf(
+                    p.getProperty("colorBlindMode", "NORMAL"));
             s.parseKeymap(p.getProperty("keymap"));
         } catch (Exception ignore) {}
         return s;
@@ -75,6 +80,7 @@ public class Settings {
             Properties p = new Properties();
             p.setProperty("blindMode", String.valueOf(blindMode));
             p.setProperty("screenSize", screenSize.name());
+            p.setProperty("colorBlindMode", colorBlindMode.name()); 
             p.setProperty("keymap", formatKeymap());
             try (OutputStream out = Files.newOutputStream(PATH)) {
                 p.store(out, "Tetris Settings");
@@ -145,5 +151,18 @@ public class Settings {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public Settings() {
+        applyDefaults(); 
+    }
+
+    public Settings(Settings other) {
+        this(); 
+        this.blindMode = other.blindMode;
+        this.screenSize = other.screenSize;
+        this.colorBlindMode = other.colorBlindMode;
+        this.keymap.clear();
+        this.keymap.putAll(other.keymap);
     }
 }
