@@ -57,7 +57,7 @@ public void activate(BoardLogic logic, Runnable onComplete) {
         }
     }
 
-    // ✅ 흔들림 효과: 화면을 몇 번 깜빡이듯 흔들기
+    //  흔들림 효과: 화면을 몇 번 깜빡이듯 흔들기
     if (logic.getOnFrameUpdate() != null) {
         new Thread(() -> {
             try {
