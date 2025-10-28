@@ -4,13 +4,19 @@ import logic.BoardLogic;
 import logic.GameState;
 import blocks.Block;
 import component.items.*;
+import component.config.Settings;
+import component.config.Settings.Action;
+
+import static component.config.Settings.Action;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 import logic.MovementService;
 import component.score.ScoreBoard;
@@ -55,6 +61,15 @@ public class Board extends JFrame {
 
     private final GamePanel gamePanel;
     private final javax.swing.Timer timer;
+
+    private Settings settings;
+    private final java.util.Map<Action, Integer> boundKeys = new java.util.EnumMap<>(Action.class);
+
+    private static final String ACT_LEFT   = "left";
+    private static final String ACT_RIGHT  = "right";
+    private static final String ACT_DOWN   = "down";
+    private static final String ACT_ROTATE = "rotate";
+    private static final String ACT_DROP   = "drop";
 
     public Board() {
         super("SeoulTech SE Tetris");
@@ -230,51 +245,30 @@ public class Board extends JFrame {
         InputMap im = comp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap am = comp.getActionMap();
 
-        im.put(KeyStroke.getKeyStroke("LEFT"), "left");
-        im.put(KeyStroke.getKeyStroke("RIGHT"), "right");
-        im.put(KeyStroke.getKeyStroke("DOWN"), "down");
-        im.put(KeyStroke.getKeyStroke("UP"), "rotate");
-        im.put(KeyStroke.getKeyStroke("SPACE"), "drop");
+        am.put(ACT_LEFT,   new AbstractAction() {
+        public void actionPerformed(ActionEvent e) { logic.moveLeft();  drawBoard(); }
+        });
+        am.put(ACT_RIGHT,  new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { logic.moveRight(); drawBoard(); }
+        });
+        am.put(ACT_DOWN,   new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { logic.moveDown();  drawBoard(); }
+        });
+        am.put(ACT_ROTATE, new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { logic.rotateBlock(); drawBoard(); }
+        });
+        am.put(ACT_DROP,   new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { logic.hardDrop();  drawBoard(); }
+        });
+
         im.put(KeyStroke.getKeyStroke("P"), "pause");
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_F11, 0), "fullscreen");
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "exit");
         im.put(KeyStroke.getKeyStroke("C"), "toggleColorBlind");
-
-        // 디버깅용 아이템 키 추가
         im.put(KeyStroke.getKeyStroke("1"), "debugLineClear");
         im.put(KeyStroke.getKeyStroke("2"), "debugWeight");
         im.put(KeyStroke.getKeyStroke("3"), "debugSpinLock");
 
-        am.put("left", new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                logic.moveLeft();
-                drawBoard();
-            }
-        });
-        am.put("right", new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                logic.moveRight();
-                drawBoard();
-            }
-        });
-        am.put("down", new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                logic.moveDown();
-                drawBoard();
-            }
-        });
-        am.put("rotate", new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                logic.rotateBlock();
-                drawBoard();
-            }
-        });
-        am.put("drop", new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                logic.hardDrop();
-                drawBoard();
-            }
-        });
         am.put("pause", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
                 if (pausePanel.isVisible()) {
@@ -715,6 +709,58 @@ public class Board extends JFrame {
 
     public boolean isRestarting() {
         return isRestarting;
+    }
+
+    public void setSettings(Settings s) {
+        this.settings = s;
+
+        // 바인딩/팔레트 등 즉시 반영하고 싶으면 여기서 한 번 적용
+        applySettingsFromConfig();
+        // 설정 변경을 실시간 반영하고 싶으면 리스너 연결도 가능
+        s.onChange(changed -> applySettingsFromConfig());
+    }
+
+    private void applySettingsFromConfig() {
+        if (settings == null) return;
+
+        colorMode = settings.colorBlindMode;
+        System.out.println("[Settings] blindMode=" + colorMode);
+
+        // 키맵 재바인딩
+        rebindKeymap();
+
+        revalidate();
+        drawBoard();
+    }
+
+    private void rebindKeymap() {
+        if (settings == null) return;
+
+        JComponent comp = gamePanel; // setupKeys를 gamePanel에 했으므로 동일 대상
+        InputMap im = comp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+        // 이전 바인딩 제거
+        for (var e : boundKeys.entrySet()) {
+            Integer code = e.getValue();
+            if (code != null) {
+                im.remove(KeyStroke.getKeyStroke(code, 0));
+            }
+        }
+        boundKeys.clear();
+
+        // 새 바인딩 등록 
+        bind(im, Action.Left,     settings.keymap.get(Action.Left),     ACT_LEFT);
+        bind(im, Action.Right,    settings.keymap.get(Action.Right),    ACT_RIGHT);
+        bind(im, Action.SoftDrop, settings.keymap.get(Action.SoftDrop), ACT_DOWN);
+        bind(im, Action.HardDrop, settings.keymap.get(Action.HardDrop), ACT_DROP);
+        bind(im, Action.Rotate,   settings.keymap.get(Action.Rotate),   ACT_ROTATE);
+    }
+
+    private void bind(InputMap im, Action action, Integer keyCode, String actionName) {
+        if (keyCode == null) return;
+        KeyStroke ks = KeyStroke.getKeyStroke(keyCode, 0);
+        im.put(ks, actionName);
+        boundKeys.put(action, keyCode);
     }
 
 }

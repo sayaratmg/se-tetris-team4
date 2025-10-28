@@ -3,6 +3,7 @@ package launcher;
 import component.Board;
 import component.MenuPanel;
 import component.GameConfig;
+import component.config.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -22,11 +23,24 @@ public class GameLauncher {
     private final CardLayout cards = new CardLayout();
     private final JPanel root = new JPanel(cards);
 
+    private final Settings settings = Settings.load();
+
     // MenuPanel: 두 개의 Consumer 필요
     private final MenuPanel menuPanel = new MenuPanel(this::onGameConfigSelect, this::onMenuSelect);
 
-    private final JPanel settingsPanel = stubPanel("설정 (Settings) – 추후 구현");
+    private final JPanel settingsPanel = createSettingsScreen();
     private final JPanel scoreboardPanel = stubPanel("스코어보드 (Scoreboard) – 추후 구현");
+
+    private JPanel createSettingsScreen() {
+        return new SettingsScreen(settings,
+            applied -> {                // Apply 시 즉시 반영하고 싶으면 여기서 처리
+                applyMenuScaleFromSettings();  // 화면 크기 조정 예시
+                root.revalidate();
+                root.repaint();
+            },
+            () -> showScreen(Screen.MENU)      // Back/ESC 시 동작
+        );
+    }
 
     private void show() {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -37,6 +51,8 @@ public class GameLauncher {
         root.add(settingsPanel, Screen.SETTINGS.name());
         root.add(scoreboardPanel, Screen.SCOREBOARD.name());
 
+        applyMenuScaleFromSettings();
+        
         frame.setContentPane(root);
         frame.setVisible(true);
 
@@ -74,6 +90,9 @@ public class GameLauncher {
         frame.setVisible(false);
 
         Board game = new Board();
+
+        try { game.setSettings(settings); } catch (Exception ignore) {}
+
         game.setTitle("TETRIS – " + config.mode() + " / " + config.difficulty());
         game.setLocationRelativeTo(null);
         game.setVisible(true);
@@ -115,5 +134,16 @@ public class GameLauncher {
             case SCOREBOARD -> showScreen(Screen.SCOREBOARD);
             case EXIT -> System.exit(0);
         }
+    }
+
+        // 화면 크기 설정 반영(선택)
+    private void applyMenuScaleFromSettings() {
+        Dimension d = switch (settings.screenSize) {
+            case SMALL  -> new Dimension(600, 600);
+            case MEDIUM -> new Dimension(720, 720);
+            case LARGE  -> new Dimension(840, 840);
+        };
+        frame.setSize(d);
+        frame.setLocationRelativeTo(null);
     }
 }
