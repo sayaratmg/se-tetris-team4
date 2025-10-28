@@ -52,7 +52,7 @@ public class Board extends JFrame {
     private final JLabel levelLabel = new JLabel("1");
     private final JLabel linesLabel = new JLabel("0");
     private final JPanel nextPanel = new JPanel();
-    
+
     private final MovementService move;
     private boolean isFullScreen = false;
     private Rectangle normalBounds;
@@ -65,11 +65,11 @@ public class Board extends JFrame {
     private Settings settings;
     private final java.util.Map<Action, Integer> boundKeys = new java.util.EnumMap<>(Action.class);
 
-    private static final String ACT_LEFT   = "left";
-    private static final String ACT_RIGHT  = "right";
-    private static final String ACT_DOWN   = "down";
+    private static final String ACT_LEFT = "left";
+    private static final String ACT_RIGHT = "right";
+    private static final String ACT_DOWN = "down";
     private static final String ACT_ROTATE = "rotate";
-    private static final String ACT_DROP   = "drop";
+    private static final String ACT_DROP = "drop";
 
     public Board() {
         super("SeoulTech SE Tetris");
@@ -78,7 +78,7 @@ public class Board extends JFrame {
         logic = new BoardLogic(score -> showGameOver(score));
         logic.setOnFrameUpdate(this::drawBoard);
 
-        move=new MovementService(logic.getState());
+        move = new MovementService(logic.getState());
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setBackground(BG_DARK);
@@ -245,20 +245,35 @@ public class Board extends JFrame {
         InputMap im = comp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap am = comp.getActionMap();
 
-        am.put(ACT_LEFT,   new AbstractAction() {
-        public void actionPerformed(ActionEvent e) { logic.moveLeft();  drawBoard(); }
+        am.put(ACT_LEFT, new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                logic.moveLeft();
+                drawBoard();
+            }
         });
-        am.put(ACT_RIGHT,  new AbstractAction() {
-            public void actionPerformed(ActionEvent e) { logic.moveRight(); drawBoard(); }
+        am.put(ACT_RIGHT, new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                logic.moveRight();
+                drawBoard();
+            }
         });
-        am.put(ACT_DOWN,   new AbstractAction() {
-            public void actionPerformed(ActionEvent e) { logic.moveDown();  drawBoard(); }
+        am.put(ACT_DOWN, new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                logic.moveDown();
+                drawBoard();
+            }
         });
         am.put(ACT_ROTATE, new AbstractAction() {
-            public void actionPerformed(ActionEvent e) { logic.rotateBlock(); drawBoard(); }
+            public void actionPerformed(ActionEvent e) {
+                logic.rotateBlock();
+                drawBoard();
+            }
         });
-        am.put(ACT_DROP,   new AbstractAction() {
-            public void actionPerformed(ActionEvent e) { logic.hardDrop();  drawBoard(); }
+        am.put(ACT_DROP, new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                logic.hardDrop();
+                drawBoard();
+            }
         });
 
         im.put(KeyStroke.getKeyStroke("P"), "pause");
@@ -345,16 +360,30 @@ public class Board extends JFrame {
         levelLabel.setText(String.valueOf(logic.getLevel()));
         linesLabel.setText(String.valueOf(logic.getLinesCleared()));
 
-        timer.setDelay(logic.getDropInterval()); // 드롭 속도 조정
-        updateNextHUD(logic.getNextBlocks());
+        timer.setDelay(logic.getDropInterval());
+
+        // === 디버깅: 다음 블록 확인 ===
+        List<Block> nextBlocks = logic.getNextBlocks();
+        System.out.println("📋 drawBoard - Next blocks: " + nextBlocks.stream()
+                .map(b -> b.getClass().getSimpleName())
+                .toList());
+        System.out.println("   Count: " + nextBlocks.size());
+
+        updateNextHUD(nextBlocks);
         gamePanel.repaint();
     }
 
     private void updateNextHUD(List<Block> nextBlocks) {
+        System.out.println("🎨 updateNextHUD called with " + nextBlocks.size() + " blocks");
+
         nextPanel.removeAll();
         nextPanel.setLayout(new GridLayout(nextBlocks.size(), 1, 0, 10));
 
-        for (Block b : nextBlocks) {
+        for (int idx = 0; idx < nextBlocks.size(); idx++) {
+            Block b = nextBlocks.get(idx);
+            System.out.println("   [" + idx + "] " + b.getClass().getSimpleName() +
+                    " (" + b.width() + "x" + b.height() + ")");
+
             JPanel container = new JPanel(new BorderLayout());
             container.setBackground(BG_PANEL);
             container.setPreferredSize(new Dimension(120, 80));
@@ -363,24 +392,56 @@ public class Board extends JFrame {
                 @Override
                 protected void paintComponent(Graphics g) {
                     super.paintComponent(g);
+                    System.out.println("      🖌️ Painting " + b.getClass().getSimpleName());
+
                     Graphics2D g2 = (Graphics2D) g;
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    int blockSize = 15;
-                    int offsetX = (getWidth() - b.width() * blockSize) / 2;
-                    int offsetY = (getHeight() - b.height() * blockSize) / 2;
-                    for (int j = 0; j < b.height(); j++)
-                        for (int i = 0; i < b.width(); i++)
+                    
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                            RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    int blockSize = 18;
+                    int totalWidth = b.width() * blockSize;
+                    int totalHeight = b.height() * blockSize;
+                    int offsetX = (getWidth() - totalWidth) / 2;
+                    int offsetY = (getHeight() - totalHeight) / 2;
+
+                    // 배경 (디버깅용으로 더 진하게)
+                    g2.setColor(new Color(60, 65, 80));
+                    g2.fillRoundRect(offsetX - 5, offsetY - 5,
+                            totalWidth + 10, totalHeight + 10, 8, 8);
+
+                    // 블록 그리기
+                    int cellsDrawn = 0;
+                    for (int j = 0; j < b.height(); j++) {
+                        for (int i = 0; i < b.width(); i++) {
                             if (b.getShape(i, j) == 1) {
+                                cellsDrawn++;
+                                int x = offsetX + i * blockSize;
+                                int y = offsetY + j * blockSize;
+
                                 g2.setColor(b.getColor());
-                                g2.fillRoundRect(offsetX + i * blockSize, offsetY + j * blockSize,
-                                        blockSize - 2, blockSize - 2, 4, 4);
+                                g2.fillRoundRect(x, y, blockSize - 2, blockSize - 2, 4, 4);
+
+                                g2.setColor(new Color(255, 255, 255, 60));
+                                g2.fillRoundRect(x, y, blockSize - 2, (blockSize - 2) / 3, 4, 4);
+
+                                g2.setColor(new Color(0, 0, 0, 40));
+                                g2.fillRoundRect(x, y + (blockSize - 2) * 2 / 3,
+                                        blockSize - 2, (blockSize - 2) / 3, 4, 4);
                             }
+                        }
+                    }
+                    System.out.println("         Drew " + cellsDrawn + " cells");
                 }
             };
             blockPanel.setBackground(BG_PANEL);
+            blockPanel.setPreferredSize(new Dimension(120, 80));
+
             container.add(blockPanel, BorderLayout.CENTER);
             nextPanel.add(container);
         }
+
+        System.out.println("   ✅ Calling revalidate/repaint");
         nextPanel.revalidate();
         nextPanel.repaint();
     }
@@ -427,10 +488,11 @@ public class Board extends JFrame {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g.create();
+            g2.translate(logic.getShakeOffset(), 0); //흔들림 적용
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             Color[][] grid = logic.getBoard();
-
+            Color[][] fade = logic.getFadeLayer();
             // === 배경 격자 ===
             g2.setColor(GRID_LINE);
             for (int r = 0; r <= BoardLogic.HEIGHT; r++)
@@ -444,11 +506,26 @@ public class Board extends JFrame {
                     if (grid[r][c] != null)
                         drawCell(g2, c, r, grid[r][c], null);
 
+            // 애니메이션용 잔상
+            for (int r = 0; r < BoardLogic.HEIGHT; r++) {
+                for (int c = 0; c < BoardLogic.WIDTH; c++) {
+                    if (fade[r][c] != null) {
+                        int px = c * CELL_SIZE + CELL_GAP;
+                        int py = r * CELL_SIZE + CELL_GAP;
+                        int size = CELL_SIZE - CELL_GAP * 2;
+
+                        g2.setColor(new Color(255, 255, 255, 180)); // 흰색 반투명 테두리
+                        g2.setStroke(new BasicStroke(3)); // 두께
+                        g2.drawRoundRect(px, py, size, size, ARC, ARC);
+                    }
+                }
+            }
+
             // === 현재 블록 ===
             Block curr = logic.getCurr();
             if (curr != null) {
                 int bx = logic.getX();
-                int by= logic.getY();
+                int by = logic.getY();
                 int ghostY = move.getGhostY(curr);
 
                 // === 고스트 블록 (테두리만)
@@ -721,7 +798,8 @@ public class Board extends JFrame {
     }
 
     private void applySettingsFromConfig() {
-        if (settings == null) return;
+        if (settings == null)
+            return;
 
         colorMode = settings.colorBlindMode;
         System.out.println("[Settings] blindMode=" + colorMode);
@@ -734,7 +812,8 @@ public class Board extends JFrame {
     }
 
     private void rebindKeymap() {
-        if (settings == null) return;
+        if (settings == null)
+            return;
 
         JComponent comp = gamePanel; // setupKeys를 gamePanel에 했으므로 동일 대상
         InputMap im = comp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
@@ -748,16 +827,17 @@ public class Board extends JFrame {
         }
         boundKeys.clear();
 
-        // 새 바인딩 등록 
-        bind(im, Action.Left,     settings.keymap.get(Action.Left),     ACT_LEFT);
-        bind(im, Action.Right,    settings.keymap.get(Action.Right),    ACT_RIGHT);
+        // 새 바인딩 등록
+        bind(im, Action.Left, settings.keymap.get(Action.Left), ACT_LEFT);
+        bind(im, Action.Right, settings.keymap.get(Action.Right), ACT_RIGHT);
         bind(im, Action.SoftDrop, settings.keymap.get(Action.SoftDrop), ACT_DOWN);
         bind(im, Action.HardDrop, settings.keymap.get(Action.HardDrop), ACT_DROP);
-        bind(im, Action.Rotate,   settings.keymap.get(Action.Rotate),   ACT_ROTATE);
+        bind(im, Action.Rotate, settings.keymap.get(Action.Rotate), ACT_ROTATE);
     }
 
     private void bind(InputMap im, Action action, Integer keyCode, String actionName) {
-        if (keyCode == null) return;
+        if (keyCode == null)
+            return;
         KeyStroke ks = KeyStroke.getKeyStroke(keyCode, 0);
         im.put(ks, actionName);
         boundKeys.put(action, keyCode);

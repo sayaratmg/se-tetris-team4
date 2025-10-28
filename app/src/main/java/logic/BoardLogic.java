@@ -20,8 +20,18 @@ public class BoardLogic {
     public static final int WIDTH = GameState.WIDTH;
     public static final int HEIGHT = GameState.HEIGHT;
 
+    private int shakeOffset = 0;
+
+    public int getShakeOffset() {
+        return shakeOffset;
+    }
+
+    public void setShakeOffset(int offset) {
+        this.shakeOffset = offset;
+    }
+
     private final GameState state = new GameState();
-    private final BlockBag bag; 
+    private final BlockBag bag;
     private final Difficulty difficulty;
 
     private final SpeedManager speedManager = new SpeedManager();
@@ -191,7 +201,8 @@ public class BoardLogic {
             @SuppressWarnings("unchecked")
             Queue<Block> queue = (Queue<Block>) field.get(bag);
 
-            if (!queue.isEmpty()) queue.poll();
+            if (!queue.isEmpty())
+                queue.poll();
             queue.add(itemBlock);
 
             nextIsItem = false;
@@ -201,17 +212,45 @@ public class BoardLogic {
     }
 
     // === Getter ===
-    public Color[][] getBoard() { return state.getBoard(); }
-    public Block getCurr() { return state.getCurr(); }
-    public int getX() { return state.getX(); }
-    public int getY() { return state.getY(); }
-    public int getScore() { return score; }
-    public int getLevel() { return speedManager.getLevel(); }
-    public int getLinesCleared() { return clearedLines; }
-    public boolean isGameOver() { return gameOver; }
+    public Color[][] getBoard() {
+        return state.getBoard();
+    }
 
-    public void setOnFrameUpdate(Runnable r) { this.onFrameUpdate = r; }
-    public Runnable getOnFrameUpdate() { return onFrameUpdate; }
+    public Block getCurr() {
+        return state.getCurr();
+    }
+
+    public int getX() {
+        return state.getX();
+    }
+
+    public int getY() {
+        return state.getY();
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public int getLevel() {
+        return speedManager.getLevel();
+    }
+
+    public int getLinesCleared() {
+        return clearedLines;
+    }
+
+    public boolean isGameOver() {
+        return gameOver;
+    }
+
+    public void setOnFrameUpdate(Runnable r) {
+        this.onFrameUpdate = r;
+    }
+
+    public Runnable getOnFrameUpdate() {
+        return onFrameUpdate;
+    }
 
     public int getDropInterval() {
         return buff.isSlowed()
@@ -219,11 +258,25 @@ public class BoardLogic {
                 : speedManager.getDropInterval();
     }
 
-    public BuffManager getBuffManager() { return buff; }
-    public ClearService getClearService() { return clear; }
-    public boolean isItemMode() { return itemMode; }
-    public GameState getState() { return state; }
-    public Color[][] getFadeLayer() { return state.getFadeLayer(); }
+    public BuffManager getBuffManager() {
+        return buff;
+    }
+
+    public ClearService getClearService() {
+        return clear;
+    }
+
+    public boolean isItemMode() {
+        return itemMode;
+    }
+
+    public GameState getState() {
+        return state;
+    }
+
+    public Color[][] getFadeLayer() {
+        return state.getFadeLayer();
+    }
 
     /** HUD용 NEXT 블록 미리보기 */
     public List<Block> getNextBlocks() {
@@ -231,4 +284,5 @@ public class BoardLogic {
                 ? new ArrayList<>(previewQueue.subList(0, Math.min(3, previewQueue.size())))
                 : List.of();
     }
+
 }
