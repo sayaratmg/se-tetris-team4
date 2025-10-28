@@ -5,22 +5,31 @@ import java.util.*;
 import java.util.function.Consumer;
 
 import blocks.Block;
-import component.BlockBag;
-import component.GameConfig;
-import component.SpeedManager;
+import component.*;
+import component.GameConfig.Difficulty;
 import component.items.ItemBlock;
 
+/**
+ * BoardLogic
+ * ------------
+ * - 게임 전체 로직 관리
+ * - 블럭 생성: RWS 기반 BlockBag 사용
+ * - 속도 관리: SpeedManager로 위임
+ */
 public class BoardLogic {
     public static final int WIDTH = GameState.WIDTH;
     public static final int HEIGHT = GameState.HEIGHT;
 
     private final GameState state = new GameState();
-    private final BlockBag bag = new BlockBag();
+    private final BlockBag bag; 
+    private final Difficulty difficulty;
+
     private final SpeedManager speedManager = new SpeedManager();
     private final MovementService move = new MovementService(state);
     private final ClearService clear = new ClearService(state);
-    private final ItemManager item = new ItemManager(bag);
     private final BuffManager buff = new BuffManager();
+
+    private ItemManager item; // ItemManager는 bag 초기화 이후 생성
 
     private final Consumer<Integer> onGameOver;
     private Runnable onFrameUpdate;
@@ -32,29 +41,31 @@ public class BoardLogic {
     private boolean nextIsItem = false;
     private boolean itemMode = false;
 
-    // 현재 + 다음 블록 큐
     private final LinkedList<Block> previewQueue = new LinkedList<>();
 
+    /** 기본 생성자 (NORMAL) */
     public BoardLogic(Consumer<Integer> onGameOver) {
         this(onGameOver, GameConfig.Difficulty.NORMAL);
     }
 
+    /** 난이도 지정 생성자 */
     public BoardLogic(Consumer<Integer> onGameOver, GameConfig.Difficulty diff) {
         this.onGameOver = onGameOver;
+        this.difficulty = diff;
+
+        // RWS 기반 BlockBag 난이도 적용
+        this.bag = new BlockBag(diff);
+        this.item = new ItemManager(bag);
+
+        // SpeedManager 난이도 적용
         speedManager.setDifficulty(diff);
 
-        // 초기 난이도 반영
-        switch (diff) {
-            case EASY -> speedManager.setLevel(1);
-            case NORMAL -> speedManager.setLevel(3);
-            case HARD -> speedManager.setLevel(5);
-        }
-
-        // 최초 4개 미리 준비
+        // 초기 블럭 준비
         refillPreview();
-        state.setCurr(previewQueue.removeFirst()); // 현재 블록 설정
+        state.setCurr(previewQueue.removeFirst());
     }
 
+    /** 큐가 부족하면 블럭 채워넣기 */
     private void refillPreview() {
         while (previewQueue.size() < 4) {
             previewQueue.add(bag.next());
@@ -83,6 +94,7 @@ public class BoardLogic {
         }
     }
 
+    /** 블럭 고정 및 다음 블럭 생성 */
     private void fixBlock() {
         var b = state.getCurr();
         var board = state.getBoard();
@@ -98,7 +110,7 @@ public class BoardLogic {
             }
         }
 
-        // 아이템 활성화
+        // 아이템 블럭 처리
         if (itemMode && b instanceof ItemBlock ib) {
             ib.activate(this, this::spawnNext);
         } else {
@@ -107,18 +119,22 @@ public class BoardLogic {
         }
     }
 
+    /** 라인 클리어 처리 */
     private void clearLines() {
         int lines = clear.clearLines(onFrameUpdate, null);
         clearedLines += lines;
         deletedLinesTotal += lines;
 
+        // 10줄마다 속도 상승 (SpeedManager에게 위임)
         if (clearedLines % 10 == 0)
             speedManager.increaseLevel();
 
+        // 아이템 등장 주기
         if (itemMode && deletedLinesTotal > 0 && deletedLinesTotal % 2 == 0)
             nextIsItem = true;
     }
 
+    /** 다음 블럭 스폰 */
     private void spawnNext() {
         refillPreview();
 
@@ -130,12 +146,11 @@ public class BoardLogic {
         }
         nextIsItem = false;
 
-        // 큐 보정
         refillPreview();
-
         state.setCurr(next);
         state.setPosition(3, 0);
 
+        // 게임 오버 체크
         if (!move.canMove(next, 3, 0)) {
             gameOver = true;
             onGameOver.accept(score);
@@ -168,64 +183,35 @@ public class BoardLogic {
         moveDown();
     }
 
-    // 🧪 디버그용: 다음 블록 강제 설정
+    // === 디버그용: 다음 블럭 강제 설정 ===
     public void debugSetNextItem(Block itemBlock) {
         try {
             var field = bag.getClass().getDeclaredField("nextBlocks");
             field.setAccessible(true);
-            java.util.Queue<Block> queue = (java.util.Queue<Block>) field.get(bag);
+            @SuppressWarnings("unchecked")
+            Queue<Block> queue = (Queue<Block>) field.get(bag);
 
-            // 맨 앞 교체 (기존 첫 블록 제거 → 아이템 삽입)
-            if (!queue.isEmpty())
-                queue.poll();
+            if (!queue.isEmpty()) queue.poll();
             queue.add(itemBlock);
 
-            nextIsItem = false; // 일반 next 로직 방해 안 함
+            nextIsItem = false;
         } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
 
     // === Getter ===
-    public Color[][] getBoard() {
-        return state.getBoard();
-    }
+    public Color[][] getBoard() { return state.getBoard(); }
+    public Block getCurr() { return state.getCurr(); }
+    public int getX() { return state.getX(); }
+    public int getY() { return state.getY(); }
+    public int getScore() { return score; }
+    public int getLevel() { return speedManager.getLevel(); }
+    public int getLinesCleared() { return clearedLines; }
+    public boolean isGameOver() { return gameOver; }
 
-    public Block getCurr() {
-        return state.getCurr();
-    }
-
-    public int getX() {
-        return state.getX();
-    }
-
-    public int getY() {
-        return state.getY();
-    }
-
-    public int getScore() {
-        return score;
-    }
-
-    public int getLevel() {
-        return speedManager.getLevel();
-    }
-
-    public int getLinesCleared() {
-        return clearedLines;
-    }
-
-    public boolean isGameOver() {
-        return gameOver;
-    }
-
-    public void setOnFrameUpdate(Runnable r) {
-        this.onFrameUpdate = r;
-    }
-
-    public Runnable getOnFrameUpdate() {
-        return onFrameUpdate;
-    }
+    public void setOnFrameUpdate(Runnable r) { this.onFrameUpdate = r; }
+    public Runnable getOnFrameUpdate() { return onFrameUpdate; }
 
     public int getDropInterval() {
         return buff.isSlowed()
@@ -233,27 +219,13 @@ public class BoardLogic {
                 : speedManager.getDropInterval();
     }
 
-    public BuffManager getBuffManager() {
-        return buff;
-    }
+    public BuffManager getBuffManager() { return buff; }
+    public ClearService getClearService() { return clear; }
+    public boolean isItemMode() { return itemMode; }
+    public GameState getState() { return state; }
+    public Color[][] getFadeLayer() { return state.getFadeLayer(); }
 
-    public ClearService getClearService() {
-        return clear;
-    }
-
-    public boolean isItemMode() {
-        return itemMode;
-    }
-
-    public GameState getState() {
-        return state;
-    }
-
-    public Color[][] getFadeLayer() {
-        return state.getFadeLayer();
-    }
-
-    // HUD용 NEXT 블록 미리보기 (현재 제외, 다음 3개)
+    /** HUD용 NEXT 블록 미리보기 */
     public List<Block> getNextBlocks() {
         return previewQueue.size() > 1
                 ? new ArrayList<>(previewQueue.subList(0, Math.min(3, previewQueue.size())))

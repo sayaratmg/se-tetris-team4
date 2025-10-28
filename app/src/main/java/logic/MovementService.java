@@ -65,14 +65,6 @@ public class MovementService {
      * - 고스트 블록 표시용
      */
     public int getGhostY(Block block) {
-
-        System.out.println("---- board snapshot ----");
-        for (int r = GameState.HEIGHT - 1; r >= 0; r--) {
-            for (int c = 0; c < GameState.WIDTH; c++) {
-                System.out.print(state.getBoard()[r][c] == null ? "." : "#");
-            }
-            System.out.println();
-        }
         if (block == null)
             return -1;
 
