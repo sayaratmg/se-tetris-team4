@@ -1,6 +1,7 @@
 package component;
 
 import logic.BoardLogic;
+import logic.GameState;
 import blocks.Block;
 import component.items.*;
 
@@ -11,6 +12,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.util.List;
 
+import logic.MovementService;
 import component.score.ScoreBoard;
 import launcher.GameLauncher;
 
@@ -45,6 +47,8 @@ public class Board extends JFrame {
     private final JLabel linesLabel = new JLabel("0");
     private final JPanel nextPanel = new JPanel();
 
+    private final GameState state = new GameState();
+    private final MovementService move = new MovementService(state);
     private boolean isFullScreen = false;
     private Rectangle normalBounds;
     private GraphicsDevice graphicsDevice;
@@ -432,24 +436,45 @@ public class Board extends JFrame {
 
             Color[][] grid = logic.getBoard();
 
-            // 그리드
+            // === 배경 격자 ===
             g2.setColor(GRID_LINE);
             for (int r = 0; r <= BoardLogic.HEIGHT; r++)
                 g2.drawLine(0, r * CELL_SIZE, BoardLogic.WIDTH * CELL_SIZE, r * CELL_SIZE);
             for (int c = 0; c <= BoardLogic.WIDTH; c++)
                 g2.drawLine(c * CELL_SIZE, 0, c * CELL_SIZE, BoardLogic.HEIGHT * CELL_SIZE);
 
-            // 고정 블록
+            // === 고정 블록 ===
             for (int r = 0; r < BoardLogic.HEIGHT; r++)
                 for (int c = 0; c < BoardLogic.WIDTH; c++)
                     if (grid[r][c] != null)
                         drawCell(g2, c, r, grid[r][c], null);
 
-            // 현재 블록
+            // === 현재 블록 ===
             Block curr = logic.getCurr();
             if (curr != null) {
                 int bx = logic.getX();
-                int by = logic.getY();
+                int by= logic.getY();
+                int ghostY = move.getGhostY(curr);
+
+                // === 고스트 블록 (테두리만)
+                g2.setColor(new Color(200, 200, 200)); // 밝은 회색
+                Stroke oldStroke = g2.getStroke();
+                g2.setStroke(new BasicStroke(2)); // 테두리 두께
+
+                for (int j = 0; j < curr.height(); j++) {
+                    for (int i = 0; i < curr.width(); i++) {
+                        if (curr.getShape(i, j) == 1) {
+                            int x = (bx + i) * CELL_SIZE + CELL_GAP;
+                            int y = (ghostY + j) * CELL_SIZE + CELL_GAP;
+                            int size = CELL_SIZE - CELL_GAP * 2;
+                            g2.drawRect(x, y, size, size);
+                        }
+                    }
+                }
+
+                g2.setStroke(oldStroke); // 스트로크 복원
+
+                // 실제 블록 그리기
                 for (int j = 0; j < curr.height(); j++) {
                     for (int i = 0; i < curr.width(); i++) {
                         if (curr.getShape(i, j) == 1) {
@@ -458,12 +483,10 @@ public class Board extends JFrame {
                     }
                 }
             }
-            
 
             g2.dispose();
         }
 
-        /** 셀 하나를 그리는 함수 */
         /** 셀 하나를 그리는 함수 */
         private void drawCell(Graphics2D g2, int col, int row, Color color, Block block) {
             int px = col * CELL_SIZE + CELL_GAP;
@@ -499,13 +522,15 @@ public class Board extends JFrame {
                 else if (item instanceof SpinLockItem) {
                     drawSymbol(g2, SpinLockItem.getSymbol(), px, py, size);
 
-            }}
+                }
+            }
         }
 
         /** 아이템 문자 그리기 공통 함수 */
         private void drawSymbol(Graphics2D g2, String symbol, int px, int py, int size) {
             g2.setColor(Color.BLACK);
-            g2.setFont(new Font("Arial", Font.BOLD, 18));
+            // g2.setFont(new Font("Arial", Font.BOLD, 18));
+            g2.setFont(new Font("Segoe UI Emoji", Font.BOLD, 18)); // 윈도우 10 이상에서 이모지 지원 폰트-> spinlock위해
             FontMetrics fm = g2.getFontMetrics();
             int tx = px + (size - fm.stringWidth(symbol)) / 2;
             int ty = py + (size + fm.getAscent() - fm.getDescent()) / 2;
