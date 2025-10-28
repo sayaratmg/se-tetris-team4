@@ -46,9 +46,8 @@ public class Board extends JFrame {
     private final JLabel levelLabel = new JLabel("1");
     private final JLabel linesLabel = new JLabel("0");
     private final JPanel nextPanel = new JPanel();
-
-    private final GameState state = new GameState();
-    private final MovementService move = new MovementService(state);
+    
+    private final MovementService move;
     private boolean isFullScreen = false;
     private Rectangle normalBounds;
     private GraphicsDevice graphicsDevice;
@@ -63,6 +62,8 @@ public class Board extends JFrame {
         // === 로직 초기화 ===
         logic = new BoardLogic(score -> showGameOver(score));
         logic.setOnFrameUpdate(this::drawBoard);
+
+        move=new MovementService(logic.getState());
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setBackground(BG_DARK);
