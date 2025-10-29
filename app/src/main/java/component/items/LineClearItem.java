@@ -77,7 +77,7 @@ public class LineClearItem extends ItemBlock {
         var board = logic.getBoard();
         var clear = logic.getClearService();
 
-        // 🧪 테스트 모드 (즉시 실행)
+        // 테스트 모드 (즉시 실행)
         if (testMode) {
             for (int x = 0; x < BoardLogic.WIDTH; x++)
                 board[targetY][x] = null;
@@ -91,22 +91,27 @@ public class LineClearItem extends ItemBlock {
             return;
         }
 
-        // 🎮 실제 게임 모드
+        // 실제 게임 모드
         SwingUtilities.invokeLater(() -> {
-            // 1️⃣ 줄 삭제 애니메이션 (클래식 효과)
+            // 줄 삭제 애니메이션 (클래식 효과)
             clear.animateSingleLineClear(targetY, logic.getOnFrameUpdate(), () -> {
 
-                // 2️⃣ 애니메이션 완료 후 중력 적용
+                // 애니메이션 완료 후 중력 적용
                 clear.applyLineGravity();
 
-                // 2️⃣ 중력 후 "약간의 지연"을 두고 재클리어 검사
-                new javax.swing.Timer(80, ev -> {
+                // 중력 후 "약간의 지연"을 두고 재클리어 검사
+                new javax.swing.Timer(150, ev -> {
                     ((javax.swing.Timer) ev.getSource()).stop();
-                    clear.clearLines(logic.getOnFrameUpdate(), null);
+                    int lines = clear.clearLines(logic.getOnFrameUpdate(), null);
 
-                    logic.addScore(100);
+                    if (lines > 0)
+                        logic.addScore(lines * 100);
+                    else
+                        logic.addScore(100);
+
                     if (logic.getOnFrameUpdate() != null)
                         logic.getOnFrameUpdate().run();
+
                     if (onComplete != null)
                         onComplete.run();
                 }).start();

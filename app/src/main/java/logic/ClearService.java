@@ -167,30 +167,42 @@ public class ClearService {
         } while (moved);
     }
 
-    /** Line-based 중력 적용 (아이템 전용) */
+    /**
+     * Line-based 중력 적용 (깊은 복사 방식)
+     * - 줄 단위로 위의 블록들을 아래로 이동
+     * - null 초기화 없이 안전하게 중력만 적용
+     */
     public void applyLineGravity() {
         if (skipDuringItem)
             return;
 
         Color[][] board = state.getBoard();
 
-        for (int x = 0; x < GameState.WIDTH; x++) {
-            // 아래서 위로 블록 수집
-            List<Color> blocks = new ArrayList<>();
-            for (int y = GameState.HEIGHT - 1; y >= 0; y--) {
-                if (board[y][x] != null)
-                    blocks.add(board[y][x]);
+        for (int y = GameState.HEIGHT - 1; y > 0; y--) {
+            if (isRowEmpty(board[y])) {
+                // 위쪽에서 채워줄 줄 찾기
+                int above = y - 1;
+                while (above >= 0 && isRowEmpty(board[above])) {
+                    above--;
+                }
+
+                if (above >= 0) {
+                    // 깊은 복사로 한 줄씩 아래로 내림
+                    for (int x = 0; x < GameState.WIDTH; x++) {
+                        board[y][x] = board[above][x];
+                        board[above][x] = null; // 위는 비움
+                    }
+                }
             }
-
-            // 열 비우기
-            for (int y = 0; y < GameState.HEIGHT; y++)
-                board[y][x] = null;
-
-            // 아래부터 채우기
-            int writeY = GameState.HEIGHT - 1;
-            for (Color c : blocks)
-                board[writeY--][x] = c;
         }
+    }
+
+    /** 한 줄이 비어있는지 검사 */
+    private boolean isRowEmpty(Color[] row) {
+        for (Color c : row)
+            if (c != null)
+                return false;
+        return true;
     }
 
     /** @deprecated Use applyLineGravity() instead */
