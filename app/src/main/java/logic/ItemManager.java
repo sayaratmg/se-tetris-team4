@@ -16,6 +16,7 @@ public class ItemManager {
         Block base = bag.next();
         if (r < 0.2) return new LineClearItem(base);
         if (r < 0.4) return new WeightItem();
+        if (r < 0.6) return new ColorBombItem(base);
         return base;
     }
 }

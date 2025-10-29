@@ -19,7 +19,8 @@ public class ClearService {
 
     /** 메인 라인 클리어 로직 - 동시 처리 방식 */
     public int clearLines(Runnable onFrameUpdate, Runnable onComplete) {
-        if (clearing) return 0; // 이미 처리 중이면 무시
+        if (clearing)
+            return 0; // 이미 처리 중이면 무시
         clearing = true;
 
         var board = state.getBoard();
@@ -205,4 +206,10 @@ public class ClearService {
     public boolean isSkipDuringItem() {
         return skipDuringItem;
     }
+
+    // colorbomb 전용 폭발 효과 재활용
+    public void playExplosionEffect(List<Integer> rows, Runnable onFrameUpdate, Runnable onComplete) {
+        animateClassicClear(rows, onFrameUpdate, onComplete);
+    }
+
 }
