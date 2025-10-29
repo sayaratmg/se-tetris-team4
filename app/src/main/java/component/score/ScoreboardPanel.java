@@ -108,7 +108,7 @@ public class ScoreboardPanel extends JPanel {
         // ESC = 뒤로가기
         registerKeyboardAction(e -> { if (onBack != null) onBack.run(); },
                 KeyStroke.getKeyStroke("ESCAPE"),
-                WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+                JComponent.WHEN_IN_FOCUSED_WINDOW);
 
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override public void componentShown(java.awt.event.ComponentEvent e) {
