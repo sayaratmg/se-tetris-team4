@@ -75,7 +75,7 @@ jacocoTestCoverageVerification {
 /* Launch4j 설정 */
 launch4j {
     outfile = "Tetris.exe"                            // exe 파일명
-    bundledJrePath = "jre"   // 내부 폴더를 참조하도록 변경
+    bundledJrePath = "%JAVA_HOME%"   // 내부 폴더를 참조하도록 변경
     mainClassName = application.mainClass.get()       // 메인 클래스
     jarTask = tasks.named("jar").get()                 // JAR 지정 방식 변경
     jreMinVersion = "1.8.0"                           // 최소 JRE 버전
