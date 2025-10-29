@@ -4,6 +4,8 @@ import component.Board;
 import component.MenuPanel;
 import component.GameConfig;
 import component.config.*;
+import component.score.ScoreBoard;
+import component.score.ScoreboardPanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -29,7 +31,9 @@ public class GameLauncher {
     private final MenuPanel menuPanel = new MenuPanel(this::onGameConfigSelect, this::onMenuSelect);
 
     private final JPanel settingsPanel = createSettingsScreen();
-    private final JPanel scoreboardPanel = stubPanel("스코어보드 (Scoreboard) – 추후 구현");
+    private final ScoreBoard scoreBoard = ScoreBoard.createDefault();
+    private final ScoreboardPanel scoreboardPanel =
+            new ScoreboardPanel(scoreBoard, () -> showScreen(Screen.MENU));
 
     private JPanel createSettingsScreen() {
         return new SettingsScreen(settings,
@@ -107,6 +111,10 @@ public class GameLauncher {
             game.requestFocus();
             game.toFront();
         });
+
+        for (WindowListener wl : frame.getWindowListeners()) {
+            frame.removeWindowListener(wl);
+        }
 
         game.addWindowListener(new WindowAdapter() {
             @Override
