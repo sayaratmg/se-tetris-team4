@@ -39,7 +39,7 @@ public final class NameInputOverlay {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel subtitle = new JLabel("이름을 입력하세요:");
-        subtitle.setFont(new Font("Arial", Font.PLAIN, 14));
+        subtitle.setFont(new Font("Apple SD Gothic Neo, 맑은 고딕, Dialog", Font.PLAIN, 14)); 
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JTextField nameField = new JTextField("PLAYER", 12);

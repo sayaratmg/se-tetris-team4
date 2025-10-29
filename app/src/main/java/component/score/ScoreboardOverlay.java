@@ -58,7 +58,7 @@ public final class ScoreboardOverlay {
         }
 
         JLabel title = new JLabel("스코어보드 - " + mode + " / " + diff, JLabel.CENTER);
-        title.setFont(new Font("Arial", Font.BOLD, 18));
+        title.setFont(new Font("Apple SD Gothic Neo, 맑은 고딕, Dialog", Font.PLAIN, 14));  
         title.setBorder(BorderFactory.createEmptyBorder(4, 4, 8, 4));
 
         JPanel btns = new JPanel();

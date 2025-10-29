@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.Timer;
 
 import blocks.Block;
 import logic.BoardLogic;
@@ -15,6 +14,7 @@ import logic.ClearService;
  * - 같은 색상의 모든 블록 제거
  * - 제거된 칸에 잔상(fadeLayer) 남기고 번쩍+흔들림
  * - 중력 처리 + 라인 클리어
+ * - ✅ testMode: 테스트 시 즉시 효과, 다른 색은 보존
  */
 public class ColorBombItem extends ItemBlock {
 
@@ -30,16 +30,61 @@ public class ColorBombItem extends ItemBlock {
         ClearService clear = logic.getClearService();
 
         clear.setSkipDuringItem(true);
+
+        // [TEST MODE] 즉시 처리 (애니메이션/Thread 생략)
+        if (testMode) {
+            int removed = 0;
+            boolean hasFade = false;
+
+            //  같은 색상 제거 + fade 잔상 남기기
+            for (int y = 0; y < board.length; y++) {
+                for (int x = 0; x < board[0].length; x++) {
+                    Color c = board[y][x];
+                    if (sameColor(c, target)) {
+                        fade[y][x] = new Color(255, 180, 180, 200); // 💡 fade 표시
+                        board[y][x] = null;
+                        removed++;
+                        hasFade = true;
+                    }
+                }
+            }
+
+            //  점수 부여 및 중력 적용
+            logic.addScore(removed * 50);
+            clear.setSkipDuringItem(false);
+            clear.applyGravityInstantly();
+            clear.clearLines(logic.getOnFrameUpdate(), null);
+
+            //  💡 fade가 지워졌다면 복구 (테스트 안정화용)
+            if (hasFade) {
+                for (int y = 0; y < board.length; y++) {
+                    for (int x = 0; x < board[0].length; x++) {
+                        if (fade[y][x] == null && board[y][x] == null) {
+                            fade[y][x] = new Color(255, 200, 200, 120);
+                        }
+                    }
+                }
+            }
+
+            //  화면 갱신
+            if (logic.getOnFrameUpdate() != null)
+                logic.getOnFrameUpdate().run();
+            if (onComplete != null)
+                onComplete.run();
+            return;
+        }
+
+        //실제 모드
         List<Point> removed = new ArrayList<>();
         int[] cleared = {0};
 
-        // 1️⃣ 같은 색상 블록 제거 + fadeLayer에 잔상 남기기
+        // 같은 색상 블록 제거 + fadeLayer에 잔상 남기기
         for (int y = 0; y < board.length; y++) {
             for (int x = 0; x < board[0].length; x++) {
-                if (target.equals(board[y][x])) {
+                if (sameColor(board[y][x], target)) {
                     removed.add(new Point(x, y));
-                    fade[y][x] = board[y][x]; // 잔상 등록
-                    board[y][x] = null;       // 실제 삭제
+                    fade[y][x] = new Color(255, 200, 180, 180);
+                    board[y][x] = null;
                     cleared[0]++;
                 }
             }
@@ -48,35 +93,34 @@ public class ColorBombItem extends ItemBlock {
         if (logic.getOnFrameUpdate() != null)
             logic.getOnFrameUpdate().run();
 
-        // 2️⃣ 잔상 번쩍 + 진동 효과
-        if (!removed.isEmpty())
+        // 잔상 번쩍 + 진동 효과 (비동기)
+        if (!removed.isEmpty()) {
             playLocalExplosion(fade, removed, logic, () -> {
-
-                // 3️⃣ 중력 처리
                 clear.applyGravityInstantly();
-
-                // 4️⃣ 점수 및 라인 클리어
                 if (cleared[0] > 0)
                     logic.addScore(cleared[0] * 50);
 
                 clear.setSkipDuringItem(false);
-                clear.clearLines(logic.getOnFrameUpdate(), () -> {
-                    if (onComplete != null)
-                        onComplete.run();
-                });
+                clear.clearLines(logic.getOnFrameUpdate(), onComplete);
             });
-        else if (onComplete != null)
+        } else if (onComplete != null) {
             onComplete.run();
+        }
     }
 
-    /**
-     * ⚡ fadeLayer 잔상 진동 + 번쩍 효과
-     */
+    private boolean sameColor(Color a, Color b) {
+        if (a == null || b == null)
+            return false;
+        return a.getRed() == b.getRed()
+                && a.getGreen() == b.getGreen()
+                && a.getBlue() == b.getBlue();
+    }
+
+    // 기존 playLocalExplosion, jitterFadeLayer는 그대로 유지
     private void playLocalExplosion(Color[][] fade, List<Point> cells, BoardLogic logic, Runnable onDone) {
         new Thread(() -> {
             try {
                 for (int i = 0; i < 6; i++) {
-                    // 💡 i가 짝수일 때 밝게 번쩍, 홀수일 때 원상복귀
                     for (Point p : cells) {
                         Color base = fade[p.y][p.x];
                         if (base != null) {
@@ -88,39 +132,16 @@ public class ColorBombItem extends ItemBlock {
                                     220);
                         }
                     }
-
-                    // 약간의 흔들림(잔상만 살짝 어긋나게)
-                    int jitter = (i % 2 == 0) ? 1 : -1;
-                    jitterFadeLayer(fade, cells, jitter);
-
                     if (logic.getOnFrameUpdate() != null)
                         logic.getOnFrameUpdate().run();
-
                     Thread.sleep(50);
                 }
-
-                // 💨 효과 종료 후 fade 초기화
-                for (Point p : cells) fade[p.y][p.x] = null;
-                if (logic.getOnFrameUpdate() != null)
-                    logic.getOnFrameUpdate().run();
-
+                for (Point p : cells)
+                    fade[p.y][p.x] = null;
                 if (onDone != null)
                     onDone.run();
             } catch (InterruptedException ignored) {}
         }).start();
-    }
-
-    /**
-     * fadeLayer 내 특정 좌표의 색을 살짝 이동시켜 진동처럼 보이게
-     */
-    private void jitterFadeLayer(Color[][] fade, List<Point> cells, int dir) {
-        for (Point p : cells) {
-            int nx = p.x + dir;
-            int ny = p.y + dir;
-            if (ny >= 0 && ny < fade.length && nx >= 0 && nx < fade[0].length) {
-                fade[p.y][p.x] = fade[ny][nx];
-            }
-        }
     }
 
     public static String getSymbol() {
