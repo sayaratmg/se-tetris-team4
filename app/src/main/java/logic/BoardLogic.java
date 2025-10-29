@@ -20,6 +20,8 @@ public class BoardLogic {
     public static final int WIDTH = GameState.WIDTH;
     public static final int HEIGHT = GameState.HEIGHT;
 
+    private int comboCount = 0; // 연속 클리어 카운트
+    private long lastClearTime = 0; // 마지막 클리어 시간 (콤보 유지 확인용)
     private int shakeOffset = 0;
 
     public int getShakeOffset() {
@@ -135,13 +137,36 @@ public class BoardLogic {
         clearedLines += lines;
         deletedLinesTotal += lines;
 
-        // 10줄마다 속도 상승 (SpeedManager에게 위임)
-        if (clearedLines % 10 == 0)
-            speedManager.increaseLevel();
+        if (lines > 0) {
+            addScore(lines * 100); // 기본 점수
 
-        // 아이템 등장 주기
-        if (itemMode && deletedLinesTotal > 0 && deletedLinesTotal % 2 == 0)
-            nextIsItem = true;
+            // 🔹 콤보 판정: 최근 3초 내에 또 클리어했다면 콤보 유지
+            long now = System.currentTimeMillis();
+            if (now - lastClearTime < 3000)
+                comboCount++;
+            else
+                comboCount = 1;
+
+            lastClearTime = now;
+
+            // 🔹 콤보 보너스 점수 (2콤보부터 가산)
+            if (comboCount > 1) {
+                int comboBonus = comboCount * 50;
+                addScore(comboBonus);
+                System.out.println("Combo! x" + comboCount + " (+" + comboBonus + ")");
+            }
+
+            // 속도 상승
+            if (clearedLines % 10 == 0)
+                speedManager.increaseLevel();
+
+            // 아이템 등장 주기
+            if (itemMode && deletedLinesTotal > 0 && deletedLinesTotal % 2 == 0)
+                nextIsItem = true;
+        } else {
+            // 🔹 라인 미클리어 시 콤보 리셋
+            comboCount = 0;
+        }
     }
 
     /** 다음 블럭 스폰 */

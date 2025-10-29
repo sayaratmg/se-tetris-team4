@@ -37,6 +37,10 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+
+      - name: Run headless-safe tests only
+        run: ./gradlew test --exclude-task :app:testGui --no-daemon
+
       # 5. 빌드 & 테스트
       - name: Build with Gradle
         run: ./gradlew clean build --no-daemon
