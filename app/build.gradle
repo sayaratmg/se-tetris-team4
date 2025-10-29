@@ -9,7 +9,7 @@ repositories {
 }
 
 dependencies {
-    implementation libs.guava
+    implementation 'com.google.guava:guava:33.0.0-jre'
     testImplementation 'junit:junit:4.13.2'
 }
 
@@ -23,29 +23,24 @@ java {
     }
 }
 
-// 서브프로젝트 구조에 맞게 절대경로 지정
 sourceSets {
     main {
-        java.srcDirs = ['app/src/main/java']
-        resources.srcDirs = ['app/src/main/resources']
+        java.srcDirs = ['src/main/java']
+        resources.srcDirs = ['src/main/resources']
     }
     test {
-        java.srcDirs = ['app/src/test/java']
-        resources.srcDirs = ['app/src/test/resources']
-        compileClasspath += main.output
-        runtimeClasspath += main.output
+        java.srcDirs = ['src/test/java']
+        resources.srcDirs = ['src/test/resources']
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
     }
 }
 
-// JUnit + classpath 설정
 tasks.withType(Test) {
-    useJUnit()
+    useJUnit()  
     testLogging {
         events "passed", "failed", "skipped"
     }
-    classpath += sourceSets.main.output
-    testClassesDirs = sourceSets.test.output.classesDirs
-    finalizedBy jacocoTestReport
 }
 
 jacoco {
@@ -57,6 +52,24 @@ jacocoTestReport {
     reports {
         xml.required = true
         csv.required = false
-        html.outputLocation = layout.buildDirectory.dir("jacocoHtml")
+        html.outputLocation = layout.buildDirectory.dir("reports/jacocoHtml")
     }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            enabled = true
+            element = 'BUNDLE'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.50
+            }
+        }
+    }
+}
+
+tasks.register('verifyCoverage') {
+    dependsOn tasks.test, tasks.jacocoTestCoverageVerification
 }
