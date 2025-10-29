@@ -31,8 +31,7 @@ public class Board extends JFrame {
     private JPanel overlay;
     private JPanel dialogPanel;
     private NameInputOverlay nameInputOverlay;
-    private ScoreboardOverlay scoreboardOverlay; 
-
+    private ScoreboardOverlay scoreboardOverlay;
 
     // === 시각용 상수 ===
     private static final int CELL_SIZE = 35;
@@ -169,6 +168,10 @@ public class Board extends JFrame {
             }
         });
         timer.start();
+        SwingUtilities.invokeLater(() -> {
+            setupKeys(gamePanel);
+            requestGameFocus();
+        });
 
         // === 일시정지 패널 ===
         pausePanel = new PausePanel(
@@ -181,8 +184,9 @@ public class Board extends JFrame {
                 () -> { // Restart
                     isRestarting = true;
                     timer.stop();
-                    dispose(); // 현재 창 닫기
-                    new Board(); // 새 게임 시작
+                    dispose();
+                    Board newBoard = new Board();
+                    newBoard.requestGameFocus();
                 },
 
                 () -> { // Exit to Menu
@@ -245,8 +249,17 @@ public class Board extends JFrame {
     }
 
     private void setupKeys(JComponent comp) {
-        InputMap im = comp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        // 플레이(이동)용 키맵: 포커스 조상 기준
+        InputMap imPlay = comp.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        // 전역 키맵: 윈도우 전체 기준
+        InputMap imGlobal = comp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap am = comp.getActionMap();
+
+        imPlay.put(KeyStroke.getKeyStroke("LEFT"), ACT_LEFT);
+        imPlay.put(KeyStroke.getKeyStroke("RIGHT"), ACT_RIGHT);
+        imPlay.put(KeyStroke.getKeyStroke("DOWN"), ACT_DOWN);
+        imPlay.put(KeyStroke.getKeyStroke("UP"), ACT_ROTATE);
+        imPlay.put(KeyStroke.getKeyStroke("SPACE"), ACT_DROP);
 
         am.put(ACT_LEFT, new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
@@ -279,14 +292,14 @@ public class Board extends JFrame {
             }
         });
 
-        im.put(KeyStroke.getKeyStroke("P"), "pause");
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_F11, 0), "fullscreen");
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "exit");
-        im.put(KeyStroke.getKeyStroke("C"), "toggleColorBlind");
-        im.put(KeyStroke.getKeyStroke("1"), "debugLineClear");
-        im.put(KeyStroke.getKeyStroke("2"), "debugWeight");
-        im.put(KeyStroke.getKeyStroke("3"), "debugSpinLock");
-        im.put(KeyStroke.getKeyStroke("4"), "debugColorBomb");
+        imGlobal.put(KeyStroke.getKeyStroke("P"), "pause");
+        imGlobal.put(KeyStroke.getKeyStroke(KeyEvent.VK_F11, 0), "fullscreen");
+        imGlobal.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "exit");
+        imGlobal.put(KeyStroke.getKeyStroke("C"), "toggleColorBlind");
+        imGlobal.put(KeyStroke.getKeyStroke("1"), "debugLineClear");
+        imGlobal.put(KeyStroke.getKeyStroke("2"), "debugWeight");
+        imGlobal.put(KeyStroke.getKeyStroke("3"), "debugSpinLock");
+        imGlobal.put(KeyStroke.getKeyStroke("4"), "debugColorBomb");
 
         am.put("pause", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
@@ -691,15 +704,30 @@ public class Board extends JFrame {
                 dialogPanel,
                 scoreBoard,
                 (rankIndex) -> showScoreboardOverlay(rankIndex), // OK 클릭 완료 시
-                () -> { hideOverlay(); setStatus("GAME OVER"); } // 취소 시
+                () -> {
+                    hideOverlay();
+                    setStatus("GAME OVER");
+                } // 취소 시
         );
 
         scoreboardOverlay = new ScoreboardOverlay(
                 dialogPanel,
                 scoreBoard,
-                () -> { hideOverlay(); /* TODO: restart() 연결 예정 */ },
-                () -> { hideOverlay(); timer.stop(); dispose(); new GameLauncher(); }
-        );
+                () -> {
+                    hideOverlay();
+                    isRestarting = true;
+                    timer.stop();
+                    dispose();
+                    Board newBoard = new Board();
+                    newBoard.requestGameFocus();
+                },
+
+                () -> {
+                    hideOverlay();
+                    timer.stop();
+                    dispose();
+                    new GameLauncher();
+                });
     }
 
     /** 이름 입력 오버레이 표시 (게임 종료 후 점수 등록용) */
@@ -711,7 +739,7 @@ public class Board extends JFrame {
     /** 스코어보드 오버레이 표시 */
     private void showScoreboardOverlay(int highlightIndex) {
         if (dialogPanel.getParent() != overlay) {
-        overlay.add(dialogPanel);
+            overlay.add(dialogPanel);
         }
         overlay.setVisible(true);
         scoreboardOverlay.show(highlightIndex);
@@ -789,6 +817,18 @@ public class Board extends JFrame {
         KeyStroke ks = KeyStroke.getKeyStroke(keyCode, 0);
         im.put(ks, actionName);
         boundKeys.put(action, keyCode);
+    }
+
+    /** 새 게임창 또는 Overlay 복귀 시 게임 패널에 포커스 부여 */
+    public void requestGameFocus() {
+        SwingUtilities.invokeLater(() -> {
+            if (gamePanel != null) {
+                gamePanel.setFocusable(true);
+                boolean ok = gamePanel.requestFocusInWindow();
+                // 포커스 회복 시점에 InputMap도 재적용
+                setupKeys(gamePanel);
+            }
+        });
     }
 
 }
