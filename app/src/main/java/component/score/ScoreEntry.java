@@ -5,7 +5,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public record ScoreEntry(String name, int score, LocalDateTime at) implements Comparable<ScoreEntry>{
+import component.GameConfig;
+
+public record ScoreEntry(
+    String name, 
+    int score, 
+    LocalDateTime at,
+    GameConfig.Mode mode,
+    GameConfig.Difficulty difficulty) implements Comparable<ScoreEntry>{
 
     /** 생성 시 유효성 검사 및 기본값 보정 */
     public ScoreEntry {
@@ -13,6 +20,8 @@ public record ScoreEntry(String name, int score, LocalDateTime at) implements Co
         name = name.strip();
         if (score < 0) score = 0;
         if (at == null) at = LocalDateTime.now();
+        if (mode == null) mode = GameConfig.Mode.CLASSIC;          
+        if (difficulty == null) difficulty = GameConfig.Difficulty.NORMAL;
     }
 
     /** 점수 비교 로직 (정렬 기준) */
@@ -27,7 +36,10 @@ public record ScoreEntry(String name, int score, LocalDateTime at) implements Co
 
     // CSV 직렬화 
     public String toCSV() {
-        return escapeCsv(name) + "," + score + "," + escapeCsv(at.toString());
+        return escapeCsv(name) + "," + score + "," + 
+        escapeCsv(at.toString())+ "," +
+        mode.name() + "," +
+        difficulty.name();
     }
 
     private static String escapeCsv(String s) {
@@ -39,13 +51,18 @@ public record ScoreEntry(String name, int score, LocalDateTime at) implements Co
     public static Optional<ScoreEntry> fromCsv(String line) {
         try {
              List<String> fields = splitCsvLine(line);
-            if (fields.size() != 3) return Optional.empty();
+            if (fields.size() != 5) return Optional.empty();
 
             String name = unquote(fields.get(0));
             int score = Integer.parseInt(unquoteIfQuoted(fields.get(1))); // 숫자는 보통 비인용
             LocalDateTime at = LocalDateTime.parse(unquote(fields.get(2)));
-
-            return Optional.of(new ScoreEntry(name, score,at));  
+            GameConfig.Mode mode = (fields.size() >= 4)
+                    ? GameConfig.Mode.valueOf(fields.get(3))
+                    : GameConfig.Mode.CLASSIC;
+            GameConfig.Difficulty diff = (fields.size() >= 5)
+                    ? GameConfig.Difficulty.valueOf(fields.get(4))
+                    : GameConfig.Difficulty.NORMAL;
+            return Optional.of(new ScoreEntry(name, score,at, mode, diff));  
         } catch (Exception e) {
             return Optional.empty();
         }

@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import component.GameConfig;
+
 public class ScoreBoard {
 
     private final List<ScoreEntry> entries = new ArrayList<>();
@@ -39,19 +41,31 @@ public class ScoreBoard {
         return Collections.unmodifiableList(entries);
     }
 
+    private int rankInBucket(ScoreEntry target, GameConfig.Mode mode, GameConfig.Difficulty diff) {
+        int idx = 0;
+        for (ScoreEntry e : entries) {
+            if (e.mode() == mode && e.difficulty() == diff) {
+                if (e.equals(target)) return idx;
+                idx++;
+            }
+        }
+        return -1;
+    }
+
     /**
      * 점수 추가 → 정렬 → 용량 초과 시 잘라내기 → 파일 저장
      * @return 추가된 점수의 인덱스(등수)
      */
-    public synchronized int addScore(String name, int score) {
-        ScoreEntry e = new ScoreEntry(name, score, LocalDateTime.now());
+    public synchronized int addScore(String name, int score, GameConfig.Mode mode, GameConfig.Difficulty diff) {
+        ScoreEntry e = new ScoreEntry(name, score, LocalDateTime.now(), mode, diff);
         entries.add(e);
+
         entries.sort(ScoreEntry::compareTo);
-        if (entries.size() > capacity) {
-            entries.subList(capacity, entries.size()).clear();
-        }
+        prunePerBucket();
+
+        if (entries.size() > capacity) entries.subList(capacity, entries.size()).clear();
         save();
-        return entries.indexOf(e);
+        return rankInBucket(e, mode, diff); 
     }
 
     /** 모든 점수 초기화 */
@@ -100,5 +114,42 @@ public class ScoreBoard {
        } catch (IOException e) {
                 System.out.println("log test"); 
        } 
+    }
+
+    public synchronized List<ScoreEntry> getEntries(GameConfig.Mode mode, GameConfig.Difficulty diff) {
+        return entries.stream()
+                .filter(e -> e.mode() == mode && e.difficulty() == diff)
+                .sorted() 
+                .limit(capacity) 
+                .collect(Collectors.toList());
+    }
+
+    // 버킷별로 상위 capacity 유지
+    private void prunePerBucket() {
+        var byBucket = entries.stream()
+                .collect(Collectors.groupingBy(se -> se.mode().name() + "::" + se.difficulty().name()));
+
+        List<ScoreEntry> rebuilt = new ArrayList<>();
+        for (var list : byBucket.values()) {
+            list.sort(ScoreEntry::compareTo);              // 점수 기준 정렬(내림차순 비교 구현)
+            rebuilt.addAll(list.subList(0, Math.min(capacity, list.size()))); // 상위 N
+        }
+
+        // 다시 한 번 전체 정렬(보기 일관성용)
+        rebuilt.sort(ScoreEntry::compareTo);
+
+        entries.clear();
+        entries.addAll(rebuilt);
+    }
+
+    public synchronized void resetAll() {
+        entries.clear();
+        save();
+    }
+
+    /** 특정 모드/난이도 버킷만 초기화 */
+    public synchronized void resetBucket(GameConfig.Mode mode, GameConfig.Difficulty diff) {
+        entries.removeIf(e -> e.mode() == mode && e.difficulty() == diff);
+        save();
     }
 }

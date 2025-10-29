@@ -1,6 +1,9 @@
 package component.score;
 
 import javax.swing.*;
+
+import component.GameConfig;
+
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
 
@@ -33,14 +36,14 @@ public final class ScoreboardOverlay {
      *                       If the value is -1, no specific row will be highlighted.
      *                       Used to visually emphasize the player's latest score.
      */
-    public void show(int highlightIndex) {
+    public void show(int highlightIndex, GameConfig.Mode mode, GameConfig.Difficulty diff) {
         String[] cols = {"순위", "이름", "점수", "기록 시간"};
         var model = new javax.swing.table.DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
         var F = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-        var list = scoreBoard.getEntries();
+        var list = scoreBoard.getEntries(mode, diff);
         for (int i = 0; i < list.size(); i++) {
             var e = list.get(i);
             model.addRow(new Object[]{ i + 1, e.name(), e.score(), F.format(e.at()) });
@@ -54,7 +57,7 @@ public final class ScoreboardOverlay {
             table.setSelectionForeground(Color.BLACK);
         }
 
-        JLabel title = new JLabel("스코어보드", JLabel.CENTER);
+        JLabel title = new JLabel("스코어보드 - " + mode + " / " + diff, JLabel.CENTER);
         title.setFont(new Font("Arial", Font.BOLD, 18));
         title.setBorder(BorderFactory.createEmptyBorder(4, 4, 8, 4));
 
