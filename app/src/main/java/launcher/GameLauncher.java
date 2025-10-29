@@ -84,12 +84,12 @@ public class GameLauncher {
     }
 
     /**
-     * [1] 게임 모드 선택 시 (NORMAL / ITEM)
+     * [1] 게임 모드 선택 시 (CLASSIC / ITEM)
      */
     private void onGameConfigSelect(GameConfig config) {
         frame.setVisible(false);
 
-        Board game = new Board();
+        Board game = new Board(config);
 
         try { game.setSettings(settings); } catch (Exception ignore) {}
 

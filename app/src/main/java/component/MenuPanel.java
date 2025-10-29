@@ -188,7 +188,7 @@ public class MenuPanel extends JPanel {
         cardsContainer.setOpaque(false);
         cardsContainer.setLayout(new GridLayout(1, 2, 26, 0));
 
-        cardsContainer.add(makeModeCard("Traditional Tetris", "Normal Game Start", GameConfig.Mode.NORMAL,
+        cardsContainer.add(makeModeCard("Traditional Tetris", "Normal Game Start", GameConfig.Mode.CLASSIC,
                 new Color(0x2B3F8C), new Color(0x1B2A55)));
         cardsContainer.add(makeModeCard("Power-ups & Items", "Start With Items", GameConfig.Mode.ITEM,
                 new Color(0x485822), new Color(0x2E3A17)));
@@ -378,7 +378,7 @@ public class MenuPanel extends JPanel {
         topPanel.add(b, BorderLayout.WEST);
 
         // Mode icon/badge
-        JLabel badge = new JLabel(mode == GameConfig.Mode.NORMAL ? "●" : "★");
+        JLabel badge = new JLabel(mode == GameConfig.Mode.CLASSIC ? "●" : "★");
         badge.setFont(badge.getFont().deriveFont(Font.BOLD, 24f));
         badge.setForeground(new Color(cTop.getRed(), cTop.getGreen(), cTop.getBlue(), 200));
         topPanel.add(badge, BorderLayout.EAST);

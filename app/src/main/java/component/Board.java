@@ -31,7 +31,8 @@ public class Board extends JFrame {
     private JPanel overlay;
     private JPanel dialogPanel;
     private NameInputOverlay nameInputOverlay;
-    private ScoreboardOverlay scoreboardOverlay;
+    private ScoreboardOverlay scoreboardOverlay; 
+    private final GameConfig config;
 
     // === 시각용 상수 ===
     private static final int CELL_SIZE = 35;
@@ -73,8 +74,9 @@ public class Board extends JFrame {
     private static final String ACT_ROTATE = "rotate";
     private static final String ACT_DROP = "drop";
 
-    public Board() {
+    public Board(GameConfig config) {
         super("SeoulTech SE Tetris");
+        this.config = config;
 
         // === 로직 초기화 ===
         logic = new BoardLogic(score -> showGameOver(score));
@@ -186,9 +188,8 @@ public class Board extends JFrame {
                 () -> { // Restart
                     isRestarting = true;
                     timer.stop();
-                    dispose();
-                    Board newBoard = new Board();
-                    newBoard.requestGameFocus();
+                    dispose(); // 현재 창 닫기
+                    new Board(config); // 새 게임 시작
                 },
 
                 () -> { // Exit to Menu
@@ -729,7 +730,7 @@ public class Board extends JFrame {
                     isRestarting = true;
                     timer.stop();
                     dispose();
-                    Board newBoard = new Board();
+                    Board newBoard = new Board(config);
                     newBoard.requestGameFocus();
                 },
 
@@ -743,7 +744,7 @@ public class Board extends JFrame {
     /** 이름 입력 오버레이 표시 (게임 종료 후 점수 등록용) */
     private void showNameInputOverlay(int score) {
         overlay.setVisible(true);
-        nameInputOverlay.show(score);
+        nameInputOverlay.show(score, config.mode(), config.difficulty());
     }
 
     /** 스코어보드 오버레이 표시 */
@@ -752,7 +753,7 @@ public class Board extends JFrame {
             overlay.add(dialogPanel);
         }
         overlay.setVisible(true);
-        scoreboardOverlay.show(highlightIndex);
+        scoreboardOverlay.show(highlightIndex, config.mode(), config.difficulty());
         overlay.requestFocusInWindow();
     }
 

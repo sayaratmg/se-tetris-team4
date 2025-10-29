@@ -1,6 +1,9 @@
 package component.score;
 
 import javax.swing.*;
+
+import component.GameConfig;
+
 import java.awt.*;
 import java.util.function.IntConsumer;
 
@@ -26,7 +29,7 @@ public final class NameInputOverlay {
      * - Everything except the 'addActionListener' parts can be freely modified 
      *   (layout, colors, fonts, components, etc.).
      */
-    public void show(int score) {
+    public void show(int score, GameConfig.Mode mode, GameConfig.Difficulty diff) {
         container.removeAll();
         container.setLayout(new BorderLayout(8, 8));
 
@@ -62,7 +65,7 @@ public final class NameInputOverlay {
 
         ok.addActionListener(e -> {
             String name = nameField.getText().isBlank() ? "PLAYER" : nameField.getText();
-            int rankIndex = scoreBoard.addScore(name, score);
+            int rankIndex = scoreBoard.addScore(name, score, mode, diff);
             onDone.accept(rankIndex);
         });
         cancel.addActionListener(e -> onCancel.run());

@@ -13,6 +13,7 @@ import java.util.Properties;
 import java.util.function.Consumer;
 
 import component.ColorBlindPalette;
+import component.GameConfig;
 import component.config.Settings.ScreenSize;
 import component.score.ScoreBoard;
 
@@ -140,14 +141,22 @@ public class Settings {
     }
 
     // ===== 스코어보드 초기화 =====
-    public void resetScoreBoard() {
+    public void resetScoreBoardAll() {
         try {
-            if (scoreBoard != null) {
-                scoreBoard.reset();           
-            } else {
-                ScoreBoard.createDefault().reset(); 
-            }
-            listeners.forEach(l -> l.accept(this)); 
+            if (scoreBoard != null) scoreBoard.resetAll();
+            else ScoreBoard.createDefault().resetAll();
+            listeners.forEach(l -> l.accept(this));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /** 특정 모드/난이도 버킷만 초기화 */
+    public void resetScoreBoard(GameConfig.Mode mode, GameConfig.Difficulty diff) {
+        try {
+            if (scoreBoard != null) scoreBoard.resetBucket(mode, diff);
+            else ScoreBoard.createDefault().resetBucket(mode, diff);
+            listeners.forEach(l -> l.accept(this));
         } catch (Exception e) {
             e.printStackTrace();
         }
