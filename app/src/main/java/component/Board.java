@@ -94,6 +94,8 @@ public class Board extends JFrame {
 
         // 중앙 게임 화면
         gamePanel = new GamePanel();
+        gamePanel.setMaximumSize(gamePanel.getPreferredSize());
+        gamePanel.setMinimumSize(gamePanel.getPreferredSize());
         root.add(gamePanel, BorderLayout.CENTER);
 
         // 오른쪽 HUD
@@ -300,6 +302,7 @@ public class Board extends JFrame {
         imGlobal.put(KeyStroke.getKeyStroke("2"), "debugWeight");
         imGlobal.put(KeyStroke.getKeyStroke("3"), "debugSpinLock");
         imGlobal.put(KeyStroke.getKeyStroke("4"), "debugColorBomb");
+        imGlobal.put(KeyStroke.getKeyStroke("5"), "debugLightning");
 
         am.put("pause", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
@@ -366,6 +369,17 @@ public class Board extends JFrame {
                 logic.debugSetNextItem(new ColorBombItem(logic.getCurr()));
 
                 System.out.println("🧪 Debug: 다음 블록 = ColorBombItem (색상 폭탄)");
+                drawBoard();
+            }
+        });
+
+        am.put("debugLightning", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!logic.isItemMode())
+                    return;
+                logic.debugSetNextItem(new LightningItem());
+                System.out.println("🧪 Debug: 다음 블록 = LightningItem (번개)");
                 drawBoard();
             }
         });
@@ -495,7 +509,7 @@ public class Board extends JFrame {
         }
     }
 
-    // === 내부 패널: 게임판 렌더링 ===
+    /** === 내부 패널: 게임판 렌더링 === */
     private class GamePanel extends JPanel {
         GamePanel() {
             setPreferredSize(new Dimension(BoardLogic.WIDTH * CELL_SIZE, BoardLogic.HEIGHT * CELL_SIZE));
@@ -507,11 +521,11 @@ public class Board extends JFrame {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.translate(logic.getShakeOffset(), 0); // 흔들림 적용
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             Color[][] grid = logic.getBoard();
             Color[][] fade = logic.getFadeLayer();
+
             // === 배경 격자 ===
             g2.setColor(GRID_LINE);
             for (int r = 0; r <= BoardLogic.HEIGHT; r++)
@@ -525,7 +539,7 @@ public class Board extends JFrame {
                     if (grid[r][c] != null)
                         drawCell(g2, c, r, grid[r][c], null);
 
-            // 애니메이션용 잔상
+            // === 잔상 (fade layer) ===
             for (int r = 0; r < BoardLogic.HEIGHT; r++) {
                 for (int c = 0; c < BoardLogic.WIDTH; c++) {
                     if (fade[r][c] != null) {
@@ -533,8 +547,13 @@ public class Board extends JFrame {
                         int py = r * CELL_SIZE + CELL_GAP;
                         int size = CELL_SIZE - CELL_GAP * 2;
 
+                        // fade 흔들림 효과 (파편 느낌)
+                        int shake = (int) (Math.random() * 4 - 2); // -2~+2 px
+                        px += shake;
+                        py += shake;
+
                         g2.setColor(new Color(255, 255, 255, 180)); // 흰색 반투명 테두리
-                        g2.setStroke(new BasicStroke(3)); // 두께
+                        g2.setStroke(new BasicStroke(3));
                         g2.drawRoundRect(px, py, size, size, ARC, ARC);
                     }
                 }
@@ -548,9 +567,9 @@ public class Board extends JFrame {
                 int ghostY = move.getGhostY(curr);
 
                 // === 고스트 블록 (테두리만)
-                g2.setColor(new Color(200, 200, 200)); // 밝은 회색
+                g2.setColor(new Color(200, 200, 200));
                 Stroke oldStroke = g2.getStroke();
-                g2.setStroke(new BasicStroke(2)); // 테두리 두께
+                g2.setStroke(new BasicStroke(2));
 
                 for (int j = 0; j < curr.height(); j++) {
                     for (int i = 0; i < curr.width(); i++) {
@@ -563,7 +582,7 @@ public class Board extends JFrame {
                     }
                 }
 
-                g2.setStroke(oldStroke); // 스트로크 복원
+                g2.setStroke(oldStroke);
 
                 // 실제 블록 그리기
                 for (int j = 0; j < curr.height(); j++) {
@@ -584,16 +603,11 @@ public class Board extends JFrame {
             int py = row * CELL_SIZE + CELL_GAP;
             int size = CELL_SIZE - CELL_GAP * 2;
 
-            // 색맹모드용 대비 강화 팔레트
+            // 색맹모드용 대비 강화
             color = ColorBlindPalette.convert(color, colorMode);
 
-            // fadeLayer 흔들림 효과
-            boolean isFade = (logic.getBoard()[row][col] == null && logic.getFadeLayer()[row][col] != null);
-            if (isFade) {
-                int shake = (int) (Math.random() * 4 - 2); // -2~+2 px 정도
-                px += shake;
-                py += shake;
-            }
+            // === 고정 블록 및 현재 블록은 흔들림 없음 ===
+            // (fade 흔들림은 paintComponent에서만 처리)
 
             g2.setColor(color);
             g2.fillRoundRect(px, py, size, size, ARC, ARC);
@@ -604,42 +618,39 @@ public class Board extends JFrame {
 
             // === 아이템 블록 문자 오버레이 ===
             if (block instanceof ItemBlock item) {
-                // LineClearItem의 경우: L이 있는 위치만 표시
                 if (item instanceof LineClearItem lineItem) {
-                    // 현재 블록의 화면상 좌표 대비 상대 좌표 계산
                     int localX = col - logic.getX();
                     int localY = row - logic.getY();
                     if (localX == lineItem.getLX() && localY == lineItem.getLY()) {
                         drawSymbol(g2, "L", px, py, size);
                     }
-                }
-                // WeightItem은 전체 칸에 'W' 표시
-                else if (item instanceof WeightItem) {
+                } else if (item instanceof WeightItem) {
                     drawSymbol(g2, "W", px, py, size);
-                }
-                // SpinLockItem은 전체 칸에 자물쇠 기호 표시
-                else if (item instanceof SpinLockItem) {
+                } else if (item instanceof SpinLockItem) {
                     drawSymbol(g2, SpinLockItem.getSymbol(), px, py, size);
-
                 } else if (item instanceof ColorBombItem) {
-                    // 🔥 폭탄형 시각 효과: 테두리 + 불빛 반사 + 💥심볼
                     Stroke oldStroke = g2.getStroke();
-
-                    // 1. 반투명 화이트 링
                     g2.setColor(new Color(255, 255, 255, 150));
                     g2.setStroke(new BasicStroke(3f));
                     g2.drawOval(px + 3, py + 3, size - 6, size - 6);
 
-                    // 2. 내측 반짝임 (노란빛)
                     g2.setColor(new Color(255, 220, 100, 120));
                     g2.drawOval(px + 6, py + 6, size - 12, size - 12);
 
-                    // 3. 폭탄 심볼
                     drawSymbol(g2, "💥", px, py, size);
+                    g2.setStroke(oldStroke);
+                } else if (item instanceof LightningItem) {
+                    Stroke oldStroke = g2.getStroke();
+                    g2.setColor(new Color(255, 255, 120, 160));
+                    g2.setStroke(new BasicStroke(3f));
+                    g2.drawOval(px + 4, py + 4, size - 8, size - 8);
 
+                    g2.setColor(new Color(100, 180, 255, 140));
+                    g2.drawOval(px + 7, py + 7, size - 14, size - 14);
+
+                    drawSymbol(g2, "⚡", px, py, size);
                     g2.setStroke(oldStroke);
                 }
-
             }
         }
 
@@ -707,7 +718,7 @@ public class Board extends JFrame {
                 () -> {
                     hideOverlay();
                     setStatus("GAME OVER");
-                } // 취소 시
+                }
         );
 
         scoreboardOverlay = new ScoreboardOverlay(
@@ -726,7 +737,6 @@ public class Board extends JFrame {
                     hideOverlay();
                     timer.stop();
                     dispose();
-                    new GameLauncher();
                 });
     }
 

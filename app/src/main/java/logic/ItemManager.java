@@ -17,6 +17,8 @@ public class ItemManager {
         if (r < 0.2) return new LineClearItem(base);
         if (r < 0.4) return new WeightItem();
         if (r < 0.6) return new ColorBombItem(base);
+        if (r < 0.8) return new LightningItem();
+        if (r < 1.0)  return new SpinLockItem(base);
         return base;
     }
 }

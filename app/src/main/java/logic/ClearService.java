@@ -197,6 +197,63 @@ public class ClearService {
         }
     }
 
+    /**
+     * 셀 단위 낙하 중력 애니메이션
+     * - 한 줄씩 아래로 내리며 자연스러운 중력 연출
+     */
+    public void applyGravityStepwise(Runnable onFrameUpdate, Runnable onComplete) {
+        new Thread(() -> {
+            try {
+                Color[][] board = state.getBoard();
+                Color[][] fade = state.getFadeLayer();
+                boolean moved = true;
+
+                while (moved) {
+                    moved = false;
+
+                    // 기존 fadeLayer 클리어
+                    for (int y = 0; y < GameState.HEIGHT; y++)
+                        for (int x = 0; x < GameState.WIDTH; x++)
+                            fade[y][x] = null;
+
+                    for (int y = GameState.HEIGHT - 2; y >= 0; y--) {
+                        for (int x = 0; x < GameState.WIDTH; x++) {
+                            if (board[y][x] != null && board[y + 1][x] == null) {
+                                // fadeLayer에 흔적 남기기
+                                fade[y + 1][x] = new Color(board[y][x].getRed(),
+                                        board[y][x].getGreen(),
+                                        board[y][x].getBlue(), 150);
+
+                                // 실제 이동
+                                board[y + 1][x] = board[y][x];
+                                board[y][x] = null;
+                                moved = true;
+                            }
+                        }
+                    }
+
+                    if (onFrameUpdate != null)
+                        onFrameUpdate.run();
+
+                    Thread.sleep(40); // 한 칸당 프레임 속도
+                }
+
+                // 마지막에 fadeLayer 클리어
+                for (int y = 0; y < GameState.HEIGHT; y++)
+                    for (int x = 0; x < GameState.WIDTH; x++)
+                        fade[y][x] = null;
+
+                if (onFrameUpdate != null)
+                    onFrameUpdate.run();
+
+                if (onComplete != null)
+                    onComplete.run();
+
+            } catch (InterruptedException ignored) {
+            }
+        }).start();
+    }
+
     /** 한 줄이 비어있는지 검사 */
     private boolean isRowEmpty(Color[] row) {
         for (Color c : row)
