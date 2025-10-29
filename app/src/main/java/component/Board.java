@@ -391,7 +391,7 @@ public class Board extends JFrame {
         });
         am.put("exit", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
-                System.exit(0);
+                dispose();
             }
         });
     }
